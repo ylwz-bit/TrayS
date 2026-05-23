@@ -8,6 +8,21 @@
 
 ---
 
+## 核心约束: 轻量化
+
+TrayS 是轻量级工具，所有修改必须遵守以下原则：
+
+- **启动速度**：不得引入启动延迟。.NET CLR 初始化、DLL 加载等必须异步或延迟加载，阻塞主线程不超过 100ms
+- **运行时性能**：监控刷新周期 1 秒，单次数据采集总耗时不得超过 200ms
+- **内存占用**：工作集不得显著增长。新版 LHM 的 PawnIO 驱动是嵌入资源，运行时才加载，可以接受
+- **二进制体积**：不得引入不必要的依赖。只编译需要的 net472 目标，不引入 WinForms/WPF 等 GUI 框架
+- **无卡顿**：UI 线程不得执行耗时操作。所有硬件查询、HTTP 请求必须在工作线程完成
+- **无后台驻留**：不使用定时器轮询以外的后台机制。服务模式下内存释放定时器 (ID=11) 必须正常工作
+
+违反轻量化原则的修改一律不接受。
+
+---
+
 ## 一、LibreHardwareMonitor 升级计划
 
 ### 现状分析
@@ -135,25 +150,28 @@
 ## 四、执行顺序建议
 
 ### 第一阶段: 升级 LibreHardwareMonitor（优先）
-1. 编译新版 LibreHardwareMonitorLib.dll
+1. 编译新版 LibreHardwareMonitorLib.dll（只编译 net472 目标，保持轻量）
 2. 替换 OpenHardwareMonitorApi/ 中的旧 dll
 3. 验证 OpenHardwareMonitorImp.cpp 的 API 兼容性，必要时修改
 4. 编译 TrayS 全解决方案，确保通过
 5. 功能测试温度读取
-6. Git commit
+6. **轻量化验证**：测量启动耗时、内存占用、单次数据采集耗时
+7. Git commit
 
 ### 第二阶段: 移除 WinRing0
 1. 确认新版 LHM + PawnIO 工作正常后
 2. 移除 WinRing0 相关文件 (.sys/.dll/.h)
 3. 简化 LoadTemperatureDLL() / FreeTemperatureDLL() / GetCpuTemp()
 4. 编译测试
-5. Git commit
+5. **轻量化验证**：确认移除后启动更快（少了 WinRing0 驱动加载）
+6. Git commit
 
 ### 第三阶段: 修复审计问题（按严重程度）
 1. 先修 CRITICAL 项（TerminateThread、竞态条件、Debug 映射大小）
 2. 再修 HIGH 项（缓冲区溢出、句柄泄漏、返回值检查）
 3. 最后修 MEDIUM 项（资源泄漏、性能、弃用 API）
 4. 每修一类问题单独 commit
+5. **注意**：修复竞态条件时，锁的粒度要细，不能引入性能瓶颈
 
 ### 第四阶段: 代码整理（可选）
 1. TrayS.cpp 拆分（5000行太大）
