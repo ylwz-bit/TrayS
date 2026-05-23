@@ -111,7 +111,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <UACExecutionLevel>RequireAdministrator</UACExecutionLevel>
-      <AdditionalDependencies>OpenHardwareMonitorApi.lib;ntdll.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ntdll.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <Manifest>
       <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
@@ -184,9 +184,9 @@
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <WholeProgramOptimization>false</WholeProgramOptimization>
       <DiagnosticsFormat>Column</DiagnosticsFormat>
-      <AdditionalOptions>/Gs32768 %(AdditionalOptions)</AdditionalOptions>
       <CompileAsWinRT>
       </CompileAsWinRT>
+      <AdditionalOptions>/Gs32768 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -221,15 +221,15 @@
     <ClInclude Include="adl_sdk.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="Function.h" />
-    <ClInclude Include="OlsApiInit.h" />
-    <ClInclude Include="OlsDef.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="TrayS.h" />
+    <ClInclude Include="PawnIo.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Function.cpp" />
     <ClCompile Include="TrayS.cpp" />
+    <ClCompile Include="PawnIo.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="TrayS.rc" />
@@ -250,6 +250,12 @@
     <Image Include="rt.ico" />
     <Image Include="topmost.ico" />
     <Image Include="TrayS.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="IntelMSR.bin" />
+    <None Include="AMDFamily0F.bin" />
+    <None Include="AMDFamily10.bin" />
+    <None Include="AMDFamily17.bin" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

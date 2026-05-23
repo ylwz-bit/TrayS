@@ -532,107 +532,51 @@ void OpenTaskBar()
 	}
 }
 ////////////////////////////////////////////获取CPU温度
-#define MISC_CONTROL_3 0x3+((0x18)<<3)
 WCHAR oldDisk=L'\0';
 int nDisk = -1;
 int GetCpuTemp(DWORD Core)
 {
-	if (hOHMA)
+	if (bPawnIoReady)
 	{
-		float fCpu,fHdd,fGpu,fCpuPackge;
-		int n = -1;
-		if (TraySave.szDisk != L'\0'&&TraySave.szDisk!=oldDisk)
-		{
-			n=GetPhysicalDriveFromPartitionLetter(TraySave.szDisk);
-		}
-		GetTemperature(&fCpu,&fGpu,NULL,&fHdd,n,&fCpuPackge);
-		TrayData->iHddTemperature = (int)fHdd;
-		if (fGpu != -1 && fGpu != 0)
-			TrayData->iTemperature2 = (int)fGpu;
-		else
-			TrayData->iTemperature2 = (int)fCpuPackge;
-		return (int)fCpu;
-	}
-	else
-	{
-		if (bRing0)
-		{
-			SetThreadAffinityMask(GetCurrentThread(), Core);
-			DWORD eax = 0, ebx, ecx, edx;
-			if (!bIntel)//老的AMD_CPU
-			{
-				Cpuid(1, &eax, &ebx, &ecx, &edx);
-				int family = ((eax >> 20) & 0xFF) + ((eax >> 8) & 0xF);
-				if (family > 0xf)
-				{
-					//				DWORD pciDevAddr = FindPciDeviceById(0x1022, 0x1203, 0);
-					DWORD miscReg;
-					ReadPciConfigDwordEx(MISC_CONTROL_3, 0xa4, &miscReg);
-					return (miscReg >> 21) >> 3;
-				}
-				else
-				{
-					//				DWORD pciDevAddr = FindPciDeviceById(0x1022, 0x1103, 0);
-					DWORD miscReg;
-					ReadPciConfigDwordEx(MISC_CONTROL_3, 0xe4, &miscReg);
-					return ((miscReg & 0xFF0000) >> 16) - 49;
-					//				return (miscReg >> 16) & 0xFF;
-				}
-			}
-			else//INTEL_CPU
-			{
-				DWORD IAcore;
-				int Tjunction = 100;
-				Rdmsr(0x1A2, &eax, &edx);
-				if (eax & 0x20000000)
-					Tjunction = 85;
-				Rdmsr(0x19C, &eax, &edx);
-				IAcore = eax;
-				IAcore &= 0xFF0000;
-				IAcore = IAcore >> 16;
-				return Tjunction - IAcore;
-			}
-		}
+		return PawnIo_GetCpuTemp(&g_PawnIo, Core);
 	}
 	return 0;
 }
 //////////////////////////////////////////////////载入温度DLL
 void LoadTemperatureDLL()
 {
-	hOHMA = LoadLibrary(L"OpenHardwareMonitorApi.dll");
-	if (hOHMA)
+	// 初始化PawnIO (替代WinRing0 + OpenHardwareMonitorApi)
+	if (PawnIo_IsInstalled())
 	{
-		
-		GetTemperature = (pfnGetTemperature) GetProcAddress(hOHMA, "GetTemperature");
-		float fCpu=-1;
-		if (GetTemperature)
+		bPawnIoReady = PawnIo_Init(&g_PawnIo);
+		if (!bPawnIoReady)
 		{
-			float fHdd,fGpu,fCpuPackge;
-			GetTemperature(&fCpu, &fGpu, NULL,  &fHdd,-1,&fCpuPackge);
-		}
-		if(fCpu != -1)
-			bRing0 = TRUE;
-		else
-		{
-			FreeLibrary(hOHMA);
-			hOHMA = NULL;
+			// PawnIO已安装但初始化失败
+			MessageBox(NULL,
+				L"PawnIO 驱动已安装但初始化失败。\n温度监控功能将不可用。\n\n请尝试重新安装 PawnIO 或重启计算机。",
+				L"TrayS - PawnIO 错误",
+				MB_OK | MB_ICONWARNING);
 		}
 	}
-	if(hOHMA==NULL)
+	else
 	{
-		if (!InitOpenLibSys(&m_hOpenLibSys))
-			bRing0 = FALSE;
-		else
+		// PawnIO未安装 - 检查用户之前是否选择跳过
+		bPawnIoReady = FALSE;
+		// 首次运行时提示 (通过检查TraySave中的标记判断是否已提示过)
+		// 这里先简单弹窗，后续可以保存用户选择到TrayS.dat
+		int ret = MessageBox(NULL,
+			L"TrayS 需要 PawnIO 驱动来读取 CPU 温度。\n\n"
+			L"PawnIO 是一个开源的轻量级硬件访问驱动，\n"
+			L"用于替代已知存在安全漏洞的 WinRing0。\n\n"
+			L"点击\"是\"打开 PawnIO 下载页面\n"
+			L"点击\"否\"跳过温度监控（其他功能正常）",
+			L"TrayS - 需要安装 PawnIO",
+			MB_YESNO | MB_ICONQUESTION);
+		if (ret == IDYES)
 		{
-			bRing0 = TRUE;
-			DWORD eax, ebx, ecx, edx;
-			Cpuid(0, &eax, &ebx, &ecx, &edx);
-			bIntel = TRUE;
-			if (ebx == 0x68747541)
-			{
-				bIntel = FALSE;
-			}
+			ShellExecuteW(NULL, L"open", L"https://github.com/namazso/PawnIO", NULL, NULL, SW_SHOWNORMAL);
 		}
+		// 用户选择跳过，CPU温度显示为0，GPU温度仍然可用(NvAPI/ADL)
 	}
 #ifdef _WIN64
 	hNVDLL = LoadLibrary(L"nvapi64.dll");
@@ -715,14 +659,8 @@ void FreeTemperatureDLL()
 		FreeLibrary(hNVDLL);
 		hNVDLL = NULL;
 	}
-	if (hOHMA)
-	{
-		FreeLibrary(hOHMA);
-		hOHMA = NULL;
-	}
-	if (m_hOpenLibSys)
-		DeinitOpenLibSys(&m_hOpenLibSys);
-	m_hOpenLibSys = NULL;
+	PawnIo_Free(&g_PawnIo);
+	bPawnIoReady = FALSE;
 }
 ///////////////////////////////////////////////打开读取设置
 void OpenSetting()
@@ -1222,20 +1160,19 @@ DWORD WINAPI GetDataThreadProc(PVOID pParam)//获取温度占用硬盘线程
 			}
 			if (TraySave.bMonitorTemperature)
 			{
-				if (bRing0)
+				// CPU温度 (通过PawnIO)
+				if (bPawnIoReady)
 				{
 					TrayData->iTemperature1 = GetCpuTemp(1);
-					if (!hOHMA && hATIDLL == NULL && hNVDLL == NULL)
-						TrayData->iTemperature2 = GetCpuTemp(dNumProcessor);
 				}
-				if (!hOHMA)
+				// GPU温度 (通过NvAPI/ADL, 不依赖PawnIO)
 				{
 					int iATITemperature = 0;
 					int iNVTemperature = 0;
 					if (hNVDLL)
 					{
-						NV_GPU_THERMAL_SETTINGS currentTemp;//获取温度的数据结构
-						currentTemp.version = NV_GPU_THERMAL_SETTINGS_VER;//一定要设置，不然调用获取温度函数时候会出错
+						NV_GPU_THERMAL_SETTINGS currentTemp;
+						currentTemp.version = NV_GPU_THERMAL_SETTINGS_VER;
 						for (int GpuIndex = 0; GpuIndex < 4; GpuIndex++)
 						{
 							if (NvAPI_GPU_GetThermalSettings(hPhysicalGpu[GpuIndex], 15, &currentTemp) == 0)
@@ -1245,7 +1182,6 @@ DWORD WINAPI GetDataThreadProc(PVOID pParam)//获取温度占用硬盘线程
 							}
 						}
 					}
-
 					if (hATIDLL)
 					{
 						adlTemperature.iSize = sizeof(ADLTemperature);
@@ -1258,6 +1194,11 @@ DWORD WINAPI GetDataThreadProc(PVOID pParam)//获取温度占用硬盘线程
 							TrayData->iTemperature2 = iATITemperature;
 						else
 							TrayData->iTemperature2 = iNVTemperature;
+					}
+					else if (bPawnIoReady)
+					{
+						// 无独立显卡温度时，用CPU温度作为备选
+						TrayData->iTemperature2 = GetCpuTemp(dNumProcessor);
 					}
 				}
 			}
@@ -1885,7 +1826,7 @@ void SetWH()
 		}
 		wTemperature = tSize.cx + wSpace;
 		mWidth += wTemperature;
-		if (bRing0)
+		if (bPawnIoReady)
 			mHeight += wHeight * 2;
 		else
 			mHeight += wHeight;
@@ -1910,15 +1851,6 @@ void SetWH()
 			::GetTextExtentPoint(mdc, sz, lstrlen(sz), &tSize);
 		}
 		wDisk = tSize.cx + wSpace;
-		if (hOHMA&&TraySave.bMonitorTemperature)
-		{
-			if (TraySave.bMonitorFloatVRow && TraySave.bMonitorFloat)
-			{
-			}
-			else
-				wDisk += wTemperature;
-			mHeight += wHeight * 2;
-		}
 		mWidth += wDisk;
 		mHeight += wHeight * 2;
 	}
@@ -3447,10 +3379,8 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 		if (bV)
 		{
 			OffsetRect(&rc, 0, (TraySave.bMonitorTraffic + TraySave.bMonitorUsage + TraySave.bMonitorTemperature) * 2 * wHeight);
-			if (!bRing0)
+			if (!bPawnIoReady)
 				OffsetRect(&rc, 0, -wHeight);
-			if (hOHMA && TraySave.bMonitorTemperature)
-				rc.bottom += wHeight * 2;
 		}
 		else
 		{
@@ -3778,7 +3708,7 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 						rgb = TraySave.cMonitorColor[6];
 					SetTextColor(mdc, rgb);
 					/*
-								if(bRing0)
+								if(bPawnIoReady)
 									swprintf_s(sz, 16, L"%.2d%%", iCPU);
 								else
 					*/
@@ -3809,7 +3739,7 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 						DrawShadowText(mdc, TraySave.szUsageCPU, lstrlen(TraySave.szUsageCPU), &crc, DT_LEFT | DT_VCENTER | DT_SINGLELINE, bColor, bShadow);
 					DrawShadowText(mdc, sz, sLen, &crc, DT_RIGHT | DT_VCENTER | DT_SINGLELINE, bColor, bShadow);
 					/*
-								if(bRing0)
+								if(bPawnIoReady)
 									swprintf_s(sz, 16, L"%.2d%%", MemoryStatusEx.dwMemoryLoad);
 								else
 					*/
@@ -3853,7 +3783,7 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 						crc.bottom /= 2;
 						InflateRect(&crc, -(wSpace / 2), 0);
 					}
-					if (bRing0)
+					if (bPawnIoReady)
 					{
 						if ((hATIDLL != NULL || hNVDLL != NULL )&& TrayData->iTemperature1 == 0 && TraySave.bMonitorDisk&&!hOHMA)
 							TrayData->iTemperature1 = TrayData->disktime;
@@ -3890,7 +3820,7 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 						}
 						DrawShadowText(mdc, sz, lstrlen(sz), &crc, DT_RIGHT | DT_VCENTER | DT_SINGLELINE, bColor, bShadow);
 					}
-					if (bRing0)
+					if (bPawnIoReady)
 					{
 						if (VTray)
 							OffsetRect(&crc, 0, wHeight);
@@ -3952,7 +3882,7 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 						if (TraySave.bMonitorTemperature)
 						{
 							crc.top += wHeight;
-							if (bRing0)
+							if (bPawnIoReady)
 								crc.top += wHeight;
 						}
 						if (TraySave.bMonitorUsage)
@@ -4083,7 +4013,7 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 						if (TraySave.bMonitorTemperature)
 						{
 							crc.top += wHeight;
-							if (bRing0)
+							if (bPawnIoReady)
 								crc.top += wHeight;
 						}
 						if (TraySave.bMonitorUsage)
@@ -4136,7 +4066,7 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 						if (TraySave.bMonitorTemperature)
 						{
 							crc.top += wHeight;
-							if (bRing0)
+							if (bPawnIoReady)
 								crc.top += wHeight;
 						}
 						if (TraySave.bMonitorUsage)

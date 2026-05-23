@@ -20,6 +20,10 @@
 #define IDD_TIME                        133
 #define IDR_MENU                        134
 #define IDI_CLOSE1                      141
+#define IDR_INTEL_MSR                   200
+#define IDR_AMD_FAMILY0F                201
+#define IDR_AMD_FAMILY10                202
+#define IDR_AMD_FAMILY17                203
 #define IDD_PRICE                       142
 #define IDC_RADIO_DEFAULT               1001
 #define IDC_RADIO_TRANSPARENT           1002

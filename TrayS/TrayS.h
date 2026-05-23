@@ -10,9 +10,8 @@
 #include <dwmapi.h>
 
 
-//WINRING0
-#include "OlsDef.h"
-#include "OlsApiInit.h"
+//PawnIO (替代WinRing0)
+#include "PawnIo.h"
 
 //ATIGPU
 #include "adl_sdk.h"
@@ -348,10 +347,10 @@ PROCESSTIME * pProcessTime;
 
 //BOOL bTaskOther = FALSE;
 
-////////////////////////////////////////LibHardware库
-HMODULE hOHMA = NULL;
-typedef void(WINAPI* pfnGetTemperature)(float* fCpu, float* fGpu, float* fMain, float* fHdd,int iHdd, float* fCpuPackge);
-pfnGetTemperature GetTemperature;
+////////////////////////////////////////PawnIO温度监控
+PIORUNTIME g_PawnIo = { INVALID_HANDLE_VALUE, FALSE, FALSE };
+BOOL bPawnIoReady = FALSE;
+#define hOHMA NULL  // 已移除OpenHardwareMonitorApi, 保留宏避免大面积修改
 
 HMODULE hPDH = NULL;
 ////////////////////////////////////////////////查找隐藏试最大化窗口
@@ -376,9 +375,7 @@ pfnAccessibleObjectFromWindow AccessibleObjectFromWindowT;
 pfnAccessibleChildren AccessibleChildrenT;
 
 /////////////////////////////////////////////////CPU温度
-BOOL bRing0=NULL;
-HMODULE m_hOpenLibSys = NULL;
-BOOL bIntel;
+// (已迁移到PawnIO, 见上方g_PawnIo)
 ////////////////////////////////////////////////ATI显卡温度
 // Memory allocation function
 void* __stdcall ADL_Main_Memory_Alloc(int iSize)
