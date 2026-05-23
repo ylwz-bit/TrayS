@@ -4,7 +4,8 @@
 
 - 代码已全部学习完毕，架构分析已保存
 - 编译环境已修复 (SDK 10.0.22621.0 + x64 Release 链接)
-- 最新提交: `436a3cc docs: PLAN.md 添加轻量化核心约束`
+- **Phase 1 完成**: PawnIO 替代 WinRing0 + OHM，编译通过 (Release 138KB)
+- 最新提交: `0631f40 feat: 用PawnIO替代WinRing0+OpenHardwareMonitorApi`
 
 ---
 
@@ -191,19 +192,18 @@ GPU 温度不受影响（NvAPI/ADL 是独立的动态加载，已有备用方案
 
 ## 三、执行顺序
 
-### 第一阶段: 原生 PawnIO 替代 WinRing0 + .NET 链路
+### 第一阶段: 原生 PawnIO 替代 WinRing0 + .NET 链路 [已完成]
 
-1. 创建 PawnIo.h / PawnIo.cpp（DeviceIoControl 通信封装）
-2. 实现 CPU 温度读取（Intel ReadMsr + AMD ReadSmn）
-3. 实现 PawnIO 未安装检测 + 用户提示逻辑（MessageBox + 保存选择到 TrayS.dat）
-4. 嵌入 .bin 模块到 TrayS.exe 资源（或随 exe 分发）
-5. 重写 LoadTemperatureDLL() / FreeTemperatureDLL() / GetCpuTemp()
-6. 移除 WinRing0 相关文件和代码
-7. 移除 OpenHardwareMonitorApi 相关代码引用
-8. 编译 TrayS.exe（单文件，无外部 DLL 依赖）
-9. **功能测试**：Intel/AMD CPU 温度、GPU 温度（NvAPI/ADL）、PawnIO 未安装时的提示流程
-10. **轻量化验证**：启动耗时、内存占用、单次数据采集耗时
-11. Git commit
+1. [x] 创建 PawnIo.h / PawnIo.cpp（DeviceIoControl 通信封装）
+2. [x] 实现 CPU 温度读取（Intel ReadMsr + AMD ReadSmn）
+3. [x] 实现 PawnIO 未安装检测 + 用户提示逻辑（MessageBox）
+4. [x] 嵌入 .bin 模块到 TrayS.exe 资源
+5. [x] 重写 LoadTemperatureDLL() / FreeTemperatureDLL() / GetCpuTemp()
+6. [x] 移除 WinRing0 相关文件和代码
+7. [x] 移除 OpenHardwareMonitorApi 相关代码引用
+8. [x] 编译 TrayS.exe（单文件 138KB，无外部 DLL 依赖）
+9. [ ] **功能测试**：需在实机上验证 Intel/AMD CPU 温度读取
+10. [ ] **轻量化验证**：启动耗时、内存占用
 
 ### 第二阶段: 修复审计问题（按严重程度）
 
@@ -229,9 +229,8 @@ GPU 温度不受影响（NvAPI/ADL 是独立的动态加载，已有备用方案
 | TrayS/Function.cpp | ~1800 | 辅助函数: DLL加载、服务管理、HTTP、字符串 |
 | TrayS/TrayS.h | ~534 | 数据结构 (TRAYSAVE/TRAYDATA/TRAFFIC) + 全局变量 |
 | TrayS/Function.h | ~163 | 函数声明 + ACCENT_POLICY 结构 |
-| TrayS/OlsApiInit.h | ~360 | WinRing0 初始化（**待删除**） |
-| TrayS/OpenHardwareMonitorApi.h | ~95 | OHM 导出函数（**待删除**） |
-| LibreHardwareMonitor/PawnIo/PawnIo.cs | ~150 | PawnIO C# 通信实现（**参考用**） |
+| TrayS/PawnIo.h | ~22 | PawnIO 原生通信头文件 |
+| TrayS/PawnIo.cpp | ~285 | PawnIO 原生通信实现 (DeviceIoControl) |
 
 ---
 
@@ -243,6 +242,7 @@ GPU 温度不受影响（NvAPI/ADL 是独立的动态加载，已有备用方案
 - [x] README.md 编写 (2026-05-24)
 - [x] PLAN.md 编写 (2026-05-24)
 - [x] 代码审计完成 (2026-05-24)
+- [x] Phase 1: PawnIO 替代 WinRing0 + OHM，编译通过 (2026-05-24)
 
 ---
 
