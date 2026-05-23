@@ -23,7 +23,7 @@
     <ProjectGuid>{6E7FFDF7-FC64-4A7C-9554-8A8677D81FE3}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>TrayS</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.22000.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.22621.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -198,7 +198,7 @@
       </HeapReserveSize>
       <StackReserveSize>
       </StackReserveSize>
-      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ucrt.lib;msvcrt.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <DelayLoadDLLs>user32.dll;gdi32.dll;advapi32.dll;OLEAUT32.dll;ole32.dll;</DelayLoadDLLs>
       <IgnoreAllDefaultLibraries>
       </IgnoreAllDefaultLibraries>
