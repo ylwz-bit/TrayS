@@ -4,7 +4,7 @@
 
 - 代码已全部学习完毕，架构分析已保存
 - 编译环境已修复 (SDK 10.0.22621.0 + x64 Release 链接)
-- 最新提交: `526314c fix: 更新Windows SDK版本并修复x64 Release链接错误`
+- 最新提交: `436a3cc docs: PLAN.md 添加轻量化核心约束`
 
 ---
 
@@ -12,108 +12,150 @@
 
 TrayS 是轻量级工具，所有修改必须遵守以下原则：
 
-- **启动速度**：不得引入启动延迟。.NET CLR 初始化、DLL 加载等必须异步或延迟加载，阻塞主线程不超过 100ms
+- **零依赖、单文件**：最终发布只需要 TrayS.exe + PawnIO .bin 模块文件（以及首次运行时提示安装 PawnIO 驱动）
+- **启动速度**：不得引入启动延迟，阻塞主线程不超过 100ms
 - **运行时性能**：监控刷新周期 1 秒，单次数据采集总耗时不得超过 200ms
-- **内存占用**：工作集不得显著增长。新版 LHM 的 PawnIO 驱动是嵌入资源，运行时才加载，可以接受
-- **二进制体积**：不得引入不必要的依赖。只编译需要的 net472 目标，不引入 WinForms/WPF 等 GUI 框架
-- **无卡顿**：UI 线程不得执行耗时操作。所有硬件查询、HTTP 请求必须在工作线程完成
-- **无后台驻留**：不使用定时器轮询以外的后台机制。服务模式下内存释放定时器 (ID=11) 必须正常工作
+- **内存占用**：工作集不得显著增长
+- **二进制体积**：不得引入不必要的依赖
+- **无卡顿**：UI 线程不得执行耗时操作
+- **无后台驻留**：不使用定时器轮询以外的后台机制
 
 违反轻量化原则的修改一律不接受。
 
 ---
 
-## 一、LibreHardwareMonitor 升级计划
+## 一、温度监控重构：原生 PawnIO 替代 WinRing0 + .NET 链路
 
-### 现状分析
+### 目标
 
-- 项目中已有新版 LibreHardwareMonitor 源码（C#/.NET），LibreHardwareMonitorLib 已支持 **PawnIO** 驱动（内嵌为资源）
-- 目标框架: net472 / netstandard2.0 / net8.0 / net9.0 / net10.0
-- 当前 TrayS 使用的是预编译的 LibreHardwareMonitorLib.dll（688KB，手动拷贝到 OpenHardwareMonitorApi/）
-- OpenHardwareMonitorApi（C++/CLI DLL）是桥接层，通过 `using namespace LibreHardwareMonitor::Hardware` 调用 .NET API
+去掉整个 .NET 依赖链，用原生 C++ 直接调用 PawnIO 驱动，恢复零依赖单文件架构。
 
-### 升级步骤
+### 当前架构（需要去掉的部分）
 
-1. **编译新版 LibreHardwareMonitorLib.dll**
-   - 用 VS2022 打开 `LibreHardwareMonitor/LibreHardwareMonitor.sln`
-   - 编译 LibreHardwareMonitorLib 项目（Release|x64，net472 目标）
-   - 将生成的 dll 拷贝到 `OpenHardwareMonitorApi/` 替换旧版
+```
+TrayS.exe
+  └─ LoadLibrary("OpenHardwareMonitorApi.dll")   ← C++/CLI DLL
+       └─ 引用 LibreHardwareMonitorLib.dll       ← .NET 程序集
+            └─ 内嵌 PawnIO .bin 模块              ← 通过 DeviceIoControl 调用
+  └─ 备选: WinRing0x64.dll → WinRing0x64.sys     ← 已知高危漏洞
+```
 
-2. **验证 API 兼容性**
-   - 检查新版 Computer/IHardware/ISensor/IVisitor 接口是否有变更
-   - 检查 HardwareType/SensorType 枚举值是否一致
-   - 如有变更，更新 OpenHardwareMonitorImp.cpp 和 UpdateVisitor.cpp
+### 目标架构
 
-3. **测试温度读取**
-   - 验证 CPU 温度（Core Average / 各核心温度）
-   - 验证 GPU 温度（NVIDIA/AMD）
-   - 验证硬盘温度和使用率
-   - 验证主板温度
+```
+TrayS.exe
+  └─ 直接 DeviceIoControl("\\.\PawnIO")          ← 原生 C++ 调用
+       └─ 加载 IntelMSR.bin / AMDFamily17.bin    ← 随 TrayS.exe 分发
+```
 
-### 风险点
+### PawnIO 通信协议（纯 Win32 API，无 .NET）
 
-- 新版 LibreHardwareMonitor 可能修改了传感器命名规则（如 "Core Average"、"GPU Core"、"Total Activity"），需逐一确认
-- net472 目标可能需要确认 .NET Framework 4.7.2 运行时可用
+1. 检查 PawnIO 驱动是否安装：读注册表 `HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\PawnIO`
+2. 打开设备：`CreateFileW(L"\\\\?\\GLOBALROOT\\Device\\PawnIO", ...)`
+3. 加载模块：`DeviceIoControl(hDevice, IOCTL_PIO_LOAD_BINARY, binData, binSize, ...)`
+4. 调用函数：`DeviceIoControl(hDevice, IOCTL_PIO_EXECUTE_FN, input, ...)`
+
+其中：
+- `IOCTL_PIO_LOAD_BINARY = (41394 << 16) | (0x821 << 2)`
+- `IOCTL_PIO_EXECUTE_FN = (41394 << 16) | (0x841 << 2)`
+- 输入缓冲区：32字节 ASCII 函数名 + int64 参数
+- 输出缓冲区：int64 结果
+
+### CPU 温度读取方案
+
+**Intel（通过 IntelMSR.bin）：**
+- 调用 `ioctl_read_msr(0x1A2)` → 获取 TjMax
+- 调用 `ioctl_read_msr(0x19C)` → 获取热读数
+- 计算: TjMax - (读数 >> 16 & 0xFF) = 温度
+
+**AMD（通过 AMDFamily17.bin）：**
+- 调用 `ioctl_read_smn(0x00059800)` → 获取温度寄存器
+- 计算: (寄存器 >> 21) & 0x7F = 温度
+- 旧 AMD（AMDFamily0F.bin / AMDFamily10.bin）：通过 `ioctl_read_msr` 或 `ioctl_get_thermtrip`
+
+**CPUID 厂商检测：**
+- 直接使用编译器内联 `__cpuid()` 指令，不需要 PawnIO
+
+### PawnIO 未安装时的处理策略
+
+启动时检测 PawnIO 是否安装，如果未安装：
+
+1. **首次提示**：弹出 MessageBox 告知用户
+   ```
+   TrayS 需要 PawnIO 驱动来读取 CPU 温度。
+   PawnIO 是一个开源的轻量级硬件访问驱动，替代已知存在安全漏洞的 WinRing0。
+
+   [立即安装]  [跳过（无温度监控）]  [了解更多]
+   ```
+
+2. **"立即安装"**：
+   - TrayS 内嵌 `PawnIO_setup.exe`（作为资源嵌入，运行时释放到临时目录执行）
+   - 或者：ShellExecute 打开 PawnIO 下载页面，让用户手动安装
+   - 安装完成后提示重启 TrayS
+
+3. **"跳过"**：
+   - CPU 温度显示为 `--` 或 `N/A`
+   - GPU 温度仍然可用（NvAPI/ADL 不依赖 PawnIO）
+   - 网速、CPU占用、内存、磁盘等监控不受影响
+   - 不再重复提示（将用户选择保存到 TrayS.dat）
+
+4. **"了解更多"**：
+   - 打开 PawnIO 的 GitHub 页面
+
+5. **后续启动**：
+   - 读取 TrayS.dat 中的用户选择
+   - 如果用户之前选择跳过，不再弹窗，直接跳过温度监控
+   - 每次启动仍然检测驱动是否已安装，如果已安装则自动启用
+
+### 具体修改清单
+
+| 文件 | 操作 | 说明 |
+|------|------|------|
+| TrayS/PawnIo.h | **新建** | PawnIO 设备通信封装（CreateFile、DeviceIoControl、模块加载） |
+| TrayS/PawnIo.cpp | **新建** | PawnIO 初始化、ReadMsr、ReadSmn、GetCpuTemp 实现 |
+| TrayS/IntelMSR.bin | **添加** | 从 LibreHardwareMonitor 复制，嵌入为资源或随 exe 分发 |
+| TrayS/AMDFamily17.bin | **添加** | 同上 |
+| TrayS/AMDFamily0F.bin | **添加** | 同上（旧 AMD 支持） |
+| TrayS/AMDFamily10.bin | **添加** | 同上（旧 AMD 支持） |
+| TrayS/TrayS.rc | **修改** | 添加 .bin 文件作为资源嵌入（或选择外部文件方式） |
+| TrayS/resource.h | **修改** | 添加 PawnIO 相关资源 ID |
+| TrayS/TrayS.cpp LoadTemperatureDLL() | **重写** | 去掉 OHM 和 WinRing0，改为 PawnIO 初始化 + 未安装提示逻辑 |
+| TrayS/TrayS.cpp FreeTemperatureDLL() | **重写** | 释放 PawnIO 设备句柄 |
+| TrayS/TrayS.cpp GetCpuTemp() | **重写** | 通过 PawnIO 的 DeviceIoControl 读取 MSR/SMN |
+| TrayS/TrayS.h | **修改** | 去掉 bRing0/m_hOpenLibSys 等旧变量，添加 PawnIO 句柄变量 |
+| TrayS/OlsApiInit.h | **删除** | WinRing0 头文件（不再需要） |
+| TrayS/OlsDef.h | **删除** | WinRing0 常量定义（不再需要） |
+| TrayS/OlsApiInitDef.h | **删除** | WinRing0 函数指针类型（不再需要） |
+| TrayS/OpenHardwareMonitorApi.h | **删除** | OHM 接口头文件（不再需要） |
+| TrayS/OpenHardwareMonitorApi.lib | **删除** | OHM 导入库（不再需要） |
+| TrayS/OpenHardwareMonitorGlobal.h | **删除** | OHM 导出宏（不再需要） |
+| TrayS/WinRing0x32.sys | **删除** | WinRing0 32位驱动（不再需要） |
+| TrayS/WinRing0x64.sys | **删除** | WinRing0 64位驱动（不再需要） |
+| OpenHardwareMonitorApi/ | **整个目录不参与编译** | C++/CLI 桥接层不再需要，可保留源码参考但不编译 |
+| TrayS/TrayS.vcxproj | **修改** | 移除 OHM 相关 lib 引用（如有） |
+
+### 最终发布文件
+
+```
+TrayS.exe              (~101KB, 不变)
+```
+
+.bin 模块可以选择：
+- **方案A**：嵌入 TrayS.exe 作为资源（运行时释放到临时目录或内存加载）→ 真正的单文件
+- **方案B**：随 TrayS.exe 分发为独立文件 → 多几个小文件但更灵活
+
+GPU 温度不受影响（NvAPI/ADL 是独立的动态加载，已有备用方案）。
 
 ---
 
-## 二、WinRing0 替换为 PawnIO 计划
-
-### 现状分析
-
-- WinRing0 仅作为 **备选方案** 使用，当 OpenHardwareMonitorApi 加载失败时才启用
-- WinRing0 仅用于 **CPU 温度** 读取，GPU 温度用的是 NvAPI/ADL
-- 调用链: `LoadTemperatureDLL()` → 如果 OHM 失败 → `InitOpenLibSys()` → `GetCpuTemp()` 中使用
-- 涉及的 WinRing0 函数:
-  - `Cpuid(0, ...)` - CPU 厂商检测
-  - `Cpuid(1, ...)` - AMD family 检测
-  - `Rdmsr(0x1A2)` / `Rdmsr(0x19C)` - Intel CPU 温度
-  - `ReadPciConfigDwordEx()` - AMD CPU 温度
-- WinRing0 驱动文件: WinRing0x32.sys, WinRing0x64.sys, WinRing0x32.dll, WinRing0x64.dll
-
-### PawnIO 集成方案
-
-**方案A: 如果新版 LibreHardwareMonitorLib 已内置 PawnIO（当前情况）**
-- 新版 LHM 已经将 PawnIO 驱动作为嵌入资源，替代了旧的 WinRing0
-- 只要 OpenHardwareMonitorApi.dll 能正常加载新版 LibreHardwareMonitorLib.dll，PawnIO 就会自动生效
-- 此时 WinRing0 备选路径可以完全移除
-
-**方案B: TrayS 原生集成 PawnIO（如果需要保留直接硬件访问的备选路径）**
-- 需要 PawnIO 的 SDK/头文件和驱动文件
-- 创建 PawnIO 初始化头文件（类似 OlsApiInit.h）
-- 替换 GetCpuTemp() 中的 WinRing0 调用:
-  - `Rdmsr` → PawnIO 的 MSR 读取接口
-  - `ReadPciConfigDwordEx` → PawnIO 的 PCI 配置空间读取接口
-  - `Cpuid` → PawnIO 的 CPUID 接口（或直接用 __cpuid 内联指令）
-
-### 具体修改文件
-
-| 文件 | 修改内容 |
-|------|----------|
-| TrayS/OlsApiInit.h | 移除或保留标记为弃用 |
-| TrayS/OlsDef.h | 移除或保留标记为弃用 |
-| TrayS/OlsApiInitDef.h | 移除或保留标记为弃用 |
-| TrayS/TrayS.h | `bRing0` / `m_hOpenLibSys` / `bIntel` 变量处理 |
-| TrayS/TrayS.cpp LoadTemperatureDLL() | 移除 InitOpenLibSys 调用，改为 PawnIO 初始化或完全依赖 OHM |
-| TrayS/TrayS.cpp FreeTemperatureDLL() | 移除 DeinitOpenLibSys 调用 |
-| TrayS/TrayS.cpp GetCpuTemp() | 移除 WinRing0 的 Rdmsr/ReadPciConfigDwordEx 调用 |
-| TrayS/WinRing0x32.sys | 移除 |
-| TrayS/WinRing0x64.sys | 移除 |
-
-### 建议策略
-
-**优先采用方案A**：让新版 LibreHardwareMonitorLib 内置的 PawnIO 负责所有硬件访问。WinRing0 备选路径在新版 LHM 可用的情况下意义不大。保留一个简化的错误提示即可。
-
----
-
-## 三、代码审计发现的问题
+## 二、代码审计发现的问题
 
 ### 严重级别 (CRITICAL)
 
 | # | 问题 | 位置 | 说明 |
 |---|------|------|------|
-| 1 | **TerminateThread** | TrayS.cpp:1117-1118 | 线程正在执行堆操作/HTTP/PDH时被强杀，可能导致死锁或内存损坏。应改为信号退出+WaitForSingleObject |
-| 2 | **全局变量竞态条件** | TrayS.h 全局变量 | TraySave/TrayData/iCPU/MemoryStatusEx 等被工作线程和UI线程同时读写，无任何同步机制 |
+| 1 | **TerminateThread** | TrayS.cpp:1117-1118 | 线程正在执行堆操作/HTTP/PDH时被强杀，可能导致死锁。应改为信号退出+WaitForSingleObject |
+| 2 | **全局变量竞态条件** | TrayS.h 全局变量 | TraySave/TrayData/iCPU/MemoryStatusEx 等被工作线程和UI线程同时读写，无任何同步 |
 | 3 | **CreateFileMapping 大小不匹配 (Debug)** | TrayS.cpp:955 | Debug构建用 sizeof(BOOL) 创建映射但用 sizeof(TRAYDATA) 映射，越界访问 |
 
 ### 高级别 (HIGH)
@@ -147,40 +189,39 @@ TrayS 是轻量级工具，所有修改必须遵守以下原则：
 
 ---
 
-## 四、执行顺序建议
+## 三、执行顺序
 
-### 第一阶段: 升级 LibreHardwareMonitor（优先）
-1. 编译新版 LibreHardwareMonitorLib.dll（只编译 net472 目标，保持轻量）
-2. 替换 OpenHardwareMonitorApi/ 中的旧 dll
-3. 验证 OpenHardwareMonitorImp.cpp 的 API 兼容性，必要时修改
-4. 编译 TrayS 全解决方案，确保通过
-5. 功能测试温度读取
-6. **轻量化验证**：测量启动耗时、内存占用、单次数据采集耗时
-7. Git commit
+### 第一阶段: 原生 PawnIO 替代 WinRing0 + .NET 链路
 
-### 第二阶段: 移除 WinRing0
-1. 确认新版 LHM + PawnIO 工作正常后
-2. 移除 WinRing0 相关文件 (.sys/.dll/.h)
-3. 简化 LoadTemperatureDLL() / FreeTemperatureDLL() / GetCpuTemp()
-4. 编译测试
-5. **轻量化验证**：确认移除后启动更快（少了 WinRing0 驱动加载）
-6. Git commit
+1. 创建 PawnIo.h / PawnIo.cpp（DeviceIoControl 通信封装）
+2. 实现 CPU 温度读取（Intel ReadMsr + AMD ReadSmn）
+3. 实现 PawnIO 未安装检测 + 用户提示逻辑（MessageBox + 保存选择到 TrayS.dat）
+4. 嵌入 .bin 模块到 TrayS.exe 资源（或随 exe 分发）
+5. 重写 LoadTemperatureDLL() / FreeTemperatureDLL() / GetCpuTemp()
+6. 移除 WinRing0 相关文件和代码
+7. 移除 OpenHardwareMonitorApi 相关代码引用
+8. 编译 TrayS.exe（单文件，无外部 DLL 依赖）
+9. **功能测试**：Intel/AMD CPU 温度、GPU 温度（NvAPI/ADL）、PawnIO 未安装时的提示流程
+10. **轻量化验证**：启动耗时、内存占用、单次数据采集耗时
+11. Git commit
 
-### 第三阶段: 修复审计问题（按严重程度）
+### 第二阶段: 修复审计问题（按严重程度）
+
 1. 先修 CRITICAL 项（TerminateThread、竞态条件、Debug 映射大小）
 2. 再修 HIGH 项（缓冲区溢出、句柄泄漏、返回值检查）
 3. 最后修 MEDIUM 项（资源泄漏、性能、弃用 API）
 4. 每修一类问题单独 commit
 5. **注意**：修复竞态条件时，锁的粒度要细，不能引入性能瓶颈
 
-### 第四阶段: 代码整理（可选）
+### 第三阶段: 代码整理（可选）
+
 1. TrayS.cpp 拆分（5000行太大）
 2. 全局变量封装
 3. 统一字符串处理函数
 
 ---
 
-## 五、关键文件速查
+## 四、关键文件速查
 
 | 文件 | 行数 | 内容 |
 |------|------|------|
@@ -188,13 +229,13 @@ TrayS 是轻量级工具，所有修改必须遵守以下原则：
 | TrayS/Function.cpp | ~1800 | 辅助函数: DLL加载、服务管理、HTTP、字符串 |
 | TrayS/TrayS.h | ~534 | 数据结构 (TRAYSAVE/TRAYDATA/TRAFFIC) + 全局变量 |
 | TrayS/Function.h | ~163 | 函数声明 + ACCENT_POLICY 结构 |
-| TrayS/OlsApiInit.h | ~360 | WinRing0 初始化和函数指针（待移除） |
-| OpenHardwareMonitorApi/OpenHardwareMonitorImp.cpp | ~363 | 硬件温度读取实现（需适配新版API） |
-| LibreHardwareMonitor/ | 整个目录 | 新版 LHM 源码（含 PawnIO 驱动） |
+| TrayS/OlsApiInit.h | ~360 | WinRing0 初始化（**待删除**） |
+| TrayS/OpenHardwareMonitorApi.h | ~95 | OHM 导出函数（**待删除**） |
+| LibreHardwareMonitor/PawnIo/PawnIo.cs | ~150 | PawnIO C# 通信实现（**参考用**） |
 
 ---
 
-## 六、已完成
+## 五、已完成
 
 - [x] 项目代码全面学习 (2026-05-24)
 - [x] 编译环境修复 - SDK 版本 + x64 Release 链接错误 (2026-05-24)
@@ -205,7 +246,7 @@ TrayS 是轻量级工具，所有修改必须遵守以下原则：
 
 ---
 
-## 七、Git 工作流约定
+## 六、Git 工作流约定
 
 - 每次功能修改单独提交，便于回滚
 - 提交信息格式: `类型: 简要描述`
