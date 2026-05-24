@@ -158,6 +158,7 @@ typedef struct _TRAYDATA
 	*/
 }TRAYDATA;
 TRAYDATA* TrayData;
+CRITICAL_SECTION g_csData; // 保护 TraySave/TrayData 共享数据
 PMIB_IFTABLE mi;//网速结构
 PIP_ADAPTER_ADDRESSES piaa;//网卡结构
 PMIB_IF_TABLE2 mit2;//网速结构

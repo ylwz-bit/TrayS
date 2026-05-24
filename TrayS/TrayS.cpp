@@ -397,7 +397,9 @@ void ReadReg()//读取设置
 	if (hFile!= INVALID_HANDLE_VALUE)
 	{
 		DWORD dwBytes;
-		ReadFile(hFile, &TraySave, sizeof TraySave, &dwBytes, NULL);		
+		EnterCriticalSection(&g_csData);
+		ReadFile(hFile, &TraySave, sizeof TraySave, &dwBytes, NULL);
+		LeaveCriticalSection(&g_csData);
 		CloseHandle(hFile);
 	}
 }
@@ -408,7 +410,9 @@ void WriteReg()//写入设置
 	if (hFile!= INVALID_HANDLE_VALUE)
 	{
 		DWORD dwBytes;
+		EnterCriticalSection(&g_csData);
 		WriteFile(hFile, &TraySave, sizeof TraySave, &dwBytes, NULL);
+		LeaveCriticalSection(&g_csData);
 		CloseHandle(hFile);
 	}
 }
@@ -800,17 +804,17 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 /*
 	if (lpCmdLine[0] == L'c')////打开控制面板
 	{
-		CloseHandle(pShellExecute(NULL, L"open", L"control.exe", &lpCmdLine[1], NULL, SW_SHOW));
+		pShellExecute(NULL, L"open", L"control.exe", &lpCmdLine[1], NULL, SW_SHOW);
 		return 0;
 	}
 	else if (lpCmdLine[0] == L'o')//用SHELLEXECUTE打开
 	{
-		CloseHandle(pShellExecute(NULL, L"open", &lpCmdLine[1], NULL, NULL, SW_SHOW));
+		pShellExecute(NULL, L"open", &lpCmdLine[1], NULL, NULL, SW_SHOW);
 		return 0;
 	}
 	else if (lpCmdLine[0] == L's')//打开任务计划
 	{
-		CloseHandle(pShellExecute(NULL, L"open", L"schtasks", &lpCmdLine[1], NULL, SW_HIDE));
+		pShellExecute(NULL, L"open", L"schtasks", &lpCmdLine[1], NULL, SW_HIDE);
 		return 0;
 	}
 	if (IsUserAdmin())
@@ -863,6 +867,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 			if (hMap)
 			{
 				TrayData = (TRAYDATA*)MapViewOfFile(hMap, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(TRAYDATA));
+				if (!TrayData) { CloseHandle(hMap); return; }
 				ZeroMemory(TrayData, sizeof(TRAYDATA));
 				int iReset = 6;
 				while (TrayData->bExit == FALSE && iReset != 0)
@@ -884,15 +889,17 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 	hMap = OpenFileMapping(FILE_MAP_ALL_ACCESS, FALSE, szAppName);
 	if (hMap)
 	{
-		TrayData = (TRAYDATA*)MapViewOfFile(hMap, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(TRAYDATA));						
+		TrayData = (TRAYDATA*)MapViewOfFile(hMap, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(TRAYDATA));
 	}
 #ifdef NDEBUG
 #else
 	else
 	{
-		hMap = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, sizeof(BOOL), szAppName);
-		TrayData = (TRAYDATA*)MapViewOfFile(hMap, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(TRAYDATA));
-		ZeroMemory(TrayData, sizeof(TRAYDATA));
+		hMap = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, sizeof(TRAYDATA), szAppName);
+		if (hMap)
+			TrayData = (TRAYDATA*)MapViewOfFile(hMap, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(TRAYDATA));
+		if (TrayData)
+			ZeroMemory(TrayData, sizeof(TRAYDATA));
 	}
 #endif // !DAEMON
 	pChangeWindowMessageFilter(WM_TRAYS, MSGFLT_ADD);
@@ -933,17 +940,17 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 	}
 	if (lpCmdLine[0] == L'c')////打开控制面板
 	{
-		CloseHandle(pShellExecute(NULL, L"open", L"control.exe", &lpCmdLine[1], NULL, SW_SHOW));
+		pShellExecute(NULL, L"open", L"control.exe", &lpCmdLine[1], NULL, SW_SHOW);
 		ExitProcess(0);
 	}
 	else if (lpCmdLine[0] == L'o')//用SHELLEXECUTE打开
 	{
-		CloseHandle(pShellExecute(NULL, L"open", &lpCmdLine[1], lpParameters, NULL, SW_SHOW));
+		pShellExecute(NULL, L"open", &lpCmdLine[1], lpParameters, NULL, SW_SHOW);
 		ExitProcess(0);
 	}
 	else if (lpCmdLine[0] == L's')//打开任务计划
 	{
-		CloseHandle(pShellExecute(NULL, L"open", L"schtasks", &lpCmdLine[1], NULL, SW_HIDE));
+		pShellExecute(NULL, L"open", L"schtasks", &lpCmdLine[1], NULL, SW_HIDE);
 		ExitProcess(0);
 	}
 	if (IsUserAdmin()==3)//////////////////////////////////////////////////以SYSYTEM权限启动
@@ -1052,10 +1059,12 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 				}
 			}
 //			WaitForSingleObject(hThread, INFINITE);
-			TerminateThread(hGetDataThread, 0);
-			TerminateThread(hPriceThread, 0);
+			bRealClose = TRUE;
+			WaitForSingleObject(hGetDataThread, 3000);
+			WaitForSingleObject(hPriceThread, 3000);
 			CloseHandle(hGetDataThread);
 			CloseHandle(hPriceThread);
+			DeleteCriticalSection(&g_csData);
 //			CloseHandle(hMainThread);
 			if (IsWindow(hSetting))
 				DestroyWindow(hSetting);
@@ -1072,7 +1081,11 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 			if (hOleacc)
 				FreeLibrary(hOleacc);
 			if (hPDH)
+			{
+				if (PdhCloseQuery)
+					PdhCloseQuery(hQuery);
 				FreeLibrary(hPDH);
+			}
 			HeapFree(GetProcessHeap(), 0, mi);
 			HeapFree(GetProcessHeap(), 0, piaa);
 			HeapFree(GetProcessHeap(), 0, traffic);
@@ -1232,6 +1245,7 @@ DWORD WINAPI GetDataThreadProc(PVOID pParam)//获取温度占用硬盘线程
 								HeapFree(GetProcessHeap(), 0, piaa);
 								int n = 0;
 								piaa = (PIP_ADAPTER_ADDRESSES)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, dwIPSize);
+								if (!piaa) break;
 								if (GetAdaptersAddressesT(AF_INET, 0, 0, piaa, &dwIPSize) == ERROR_SUCCESS)
 								{
 									paa = &piaa[0];
@@ -1248,6 +1262,7 @@ DWORD WINAPI GetDataThreadProc(PVOID pParam)//获取温度占用硬盘线程
 										HeapFree(GetProcessHeap(), 0, traffic);
 										nTraffic = n;
 										traffic = (TRAFFIC*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, nTraffic * sizeof TRAFFIC);
+										if (!traffic) nTraffic = 0;
 									}
 								}
 							}
@@ -1321,6 +1336,7 @@ DWORD WINAPI GetDataThreadProc(PVOID pParam)//获取温度占用硬盘线程
 								dwMISize += sizeof MIB_IFROW * 2;
 								HeapFree(GetProcessHeap(), 0, mi);
 								mi = (MIB_IFTABLE*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, dwMISize);
+								if (!mi) break;
 								GetIfTableT(mi, &dwMISize, FALSE);
 							}
 							for (DWORD i = 0; i < mi->dwNumEntries; i++)
@@ -1436,6 +1452,7 @@ DWORD WINAPI GetDataThreadProc(PVOID pParam)//获取温度占用硬盘线程
 //
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
+	InitializeCriticalSection(&g_csData);
 	hMain = ::CreateDialog(hInst, MAKEINTRESOURCE(IDD_MAIN), NULL, (DLGPROC)MainProc);
 	if (!hMain)
 	{
@@ -1588,6 +1605,7 @@ void SetTaskBarPos(HWND hTaskListWnd, HWND hTrayWnd, HWND hTaskWnd, HWND hReBarW
 		if (paccChlid->get_accChildCount(&childCount) == S_OK && childCount != 0)
 		{
 			VARIANT* pArray = (VARIANT*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof VARIANT * childCount);
+			if (!pArray) return;
 			if (AccessibleChildrenT(paccChlid, 0L, childCount, pArray, &returnCount) == S_OK)
 			{
 				for (int x = 0; x < returnCount; x++)
@@ -3314,7 +3332,7 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 			if (pProcessTime == NULL)
 			{
 				pProcessTime = (PROCESSTIME*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof PROCESSTIME * (nProcess + 32));
-//				memset(pProcessTime, 0, sizeof(PROCESSTIME) * (nProcess + 32));
+				if (!pProcessTime) nProcess = 0;
 			}
 			GetProcessCpuUsage();
 			HDC mdc = GetDC(hMain);
@@ -4422,13 +4440,13 @@ INT_PTR CALLBACK SettingProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 			LITEM item = pNMLink->item;
 			if ((((LPNMHDR)lParam)->hwndFrom == g_hLink) && (item.iLink == 0))
 			{
-				CloseHandle(pShellExecute(NULL, L"open", L"https://github.com/cgbsmy/TrayS", NULL, NULL, SW_SHOW));
+				pShellExecute(NULL, L"open", L"https://github.com/cgbsmy/TrayS", NULL, NULL, SW_SHOW);
 				//CloseHandle(pShellExecute(NULL, L"open", L"https://gitee.com/cgbsmy/TrayS", NULL, NULL, SW_SHOW));
 				//mailto:cgbsmy@live.com?subject=TrayS
 			}
 			else
 			{
-				CloseHandle(pShellExecute(NULL, L"open", L"https://www.52pojie.cn/thread-1182669-1-1.html", NULL, NULL, SW_SHOW));
+				pShellExecute(NULL, L"open", L"https://www.52pojie.cn/thread-1182669-1-1.html", NULL, NULL, SW_SHOW);
 			}
 			break;
 		}
