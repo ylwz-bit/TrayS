@@ -397,8 +397,12 @@ void ReadReg()//读取设置
 	if (hFile!= INVALID_HANDLE_VALUE)
 	{
 		DWORD dwBytes;
+		TRAYSAVE tempSave;
 		EnterCriticalSection(&g_csData);
-		ReadFile(hFile, &TraySave, sizeof TraySave, &dwBytes, NULL);
+		if (ReadFile(hFile, &tempSave, sizeof tempSave, &dwBytes, NULL) && dwBytes == sizeof tempSave)
+		{
+			memcpy(&TraySave, &tempSave, sizeof(TRAYSAVE));
+		}
 		LeaveCriticalSection(&g_csData);
 		CloseHandle(hFile);
 	}
@@ -977,6 +981,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 	RTLGETVERSION* RtlGetVersion = (RTLGETVERSION*)GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "RtlGetVersion");
 	if (RtlGetVersion)
 		RtlGetVersion(&rovi);
+	InitializeCriticalSection(&g_csData);
 	ReadReg();
 	if(!TraySave.bMonitorTips||!TraySave.bMonitor||TraySave.bMonitorTransparent)
 		EnumWindows((WNDENUMPROC)FindSettingWindowFunc, 0);
@@ -1428,7 +1433,6 @@ DWORD WINAPI GetDataThreadProc(PVOID pParam)//获取温度占用硬盘线程
 //
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
-	InitializeCriticalSection(&g_csData);
 	hMain = ::CreateDialog(hInst, MAKEINTRESOURCE(IDD_MAIN), NULL, (DLGPROC)MainProc);
 	if (!hMain)
 	{
@@ -2318,7 +2322,7 @@ INT_PTR CALLBACK TaskTipsProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPa
 			else if (pt.x > rc.right * 92 / 100)
 			{
 				bRealClose = TRUE;
-				TrayData->bExit = TRUE;
+				if (TrayData) TrayData->bExit = TRUE;
 				SendMessage(hMain, WM_CLOSE, 0, 0);
 			}
 			else
@@ -4751,7 +4755,7 @@ INT_PTR CALLBACK SettingProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 		else if (LOWORD(wParam) == IDC_CLOSE)
 		{
 			bRealClose = TRUE;
-			TrayData->bExit = TRUE;
+			if (TrayData) TrayData->bExit = TRUE;
 			SendMessage(hMain, WM_CLOSE, NULL, NULL);
 		}
 		else if (LOWORD(wParam) == IDC_BUTTON_SELECT_NET)
