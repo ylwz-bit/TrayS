@@ -1142,8 +1142,12 @@ DWORD WINAPI GetDataThreadProc(PVOID pParam)//获取温度占用硬盘线程
 			{
 				iCPU = GetCPUUseRate();
 			}
-			if (IsWindow(hTaskTips))
+			if (TraySave.bMonitorTips)
 			{
+				if (pProcessTime == NULL)
+				{
+					pProcessTime = (PROCESSTIME*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof PROCESSTIME * (512));
+				}
 				nProcess = GetProcessMemUsage();
 				GetProcessCpuUsage();
 			}
@@ -2248,14 +2252,11 @@ INT_PTR CALLBACK TaskTipsProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPa
 		rc.bottom = (nTraffic + 12) * wTipsHeight;
 		rc.left = rc.right * 100 / 178;
 		rc.right = rc.right * 100 / 145;
-		if (PtInRect(&rc, pt))
+		BOOL bInProcessX = PtInRect(&rc, pt);
+		if (bInProcessX != inTipsProcessX)
 		{
-			inTipsProcessX = TRUE;
+			inTipsProcessX = bInProcessX;
 			::InvalidateRect(hDlg, NULL, TRUE);
-		}
-		else
-		{
-			inTipsProcessX = FALSE;
 		}
 	}
 	break;
@@ -3308,13 +3309,6 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 				hTaskTips = ::CreateDialog(hInst, MAKEINTRESOURCE(IDD_TIPS), NULL, (DLGPROC)TaskTipsProc);
 				SetLayeredWindowAttributes(hTaskTips, 0, 255, LWA_ALPHA);
 			}
-			nProcess = GetProcessMemUsage();
-			if (pProcessTime == NULL)
-			{
-				pProcessTime = (PROCESSTIME*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof PROCESSTIME * (nProcess + 32));
-				if (!pProcessTime) nProcess = 0;
-			}
-			GetProcessCpuUsage();
 			HDC mdc = GetDC(hMain);
 			TraySave.TipsFont.lfHeight = DPI(TraySave.TipsFontSize);
 			HFONT hTipsFont = CreateFontIndirect(&TraySave.TipsFont); //创建字体
