@@ -5,7 +5,8 @@
 - 代码已全部学习完毕，架构分析已保存
 - 编译环境已修复 (SDK 10.0.22621.0 + x64 Release 链接)
 - **Phase 1 完成**: PawnIO 替代 WinRing0 + OHM，编译通过 (Release 138KB)
-- 最新提交: `0631f40 feat: 用PawnIO替代WinRing0+OpenHardwareMonitorApi`
+- **Phase 2 完成**: 修复 CRITICAL/HIGH/MEDIUM 审计问题 (15项)
+- 最新提交: `b9ece62 fix: 修复代码审计发现的安全和稳定性问题`
 
 ---
 
@@ -205,13 +206,18 @@ GPU 温度不受影响（NvAPI/ADL 是独立的动态加载，已有备用方案
 9. [ ] **功能测试**：需在实机上验证 Intel/AMD CPU 温度读取
 10. [ ] **轻量化验证**：启动耗时、内存占用
 
-### 第二阶段: 修复审计问题（按严重程度）
+### 第二阶段: 修复审计问题（按严重程度）[已完成]
 
-1. 先修 CRITICAL 项（TerminateThread、竞态条件、Debug 映射大小）
-2. 再修 HIGH 项（缓冲区溢出、句柄泄漏、返回值检查）
-3. 最后修 MEDIUM 项（资源泄漏、性能、弃用 API）
-4. 每修一类问题单独 commit
-5. **注意**：修复竞态条件时，锁的粒度要细，不能引入性能瓶颈
+1. [x] CRITICAL: TerminateThread → 信号退出 + WaitForSingleObject
+2. [x] CRITICAL: CreateFileMapping 大小不匹配修复
+3. [x] CRITICAL: 添加 CRITICAL_SECTION 保护 TraySave 文件读写
+4. [x] HIGH: ShellExecute 返回值 CloseHandle 误用 (9处)
+5. [x] HIGH: 句柄泄漏修复 (hSnap, hProcess, hThread)
+6. [x] HIGH: HeapAlloc 返回值检查 (5处)
+7. [x] HIGH: CreateFile 检查方式修复
+8. [x] HIGH: lstrcpy 缓冲区溢出修复
+9. [x] MEDIUM: PDH 资源泄漏修复
+10. [x] MEDIUM: MapViewOfFile 返回值检查
 
 ### 第三阶段: 代码整理（可选）
 
@@ -243,6 +249,7 @@ GPU 温度不受影响（NvAPI/ADL 是独立的动态加载，已有备用方案
 - [x] PLAN.md 编写 (2026-05-24)
 - [x] 代码审计完成 (2026-05-24)
 - [x] Phase 1: PawnIO 替代 WinRing0 + OHM，编译通过 (2026-05-24)
+- [x] Phase 2: 修复 CRITICAL/HIGH/MEDIUM 审计问题 (2026-05-24)
 
 ---
 
