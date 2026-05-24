@@ -553,34 +553,10 @@ void LoadTemperatureDLL()
 	if (PawnIo_IsInstalled())
 	{
 		bPawnIoReady = PawnIo_Init(&g_PawnIo);
-		if (!bPawnIoReady)
-		{
-			// PawnIO已安装但初始化失败
-			MessageBox(NULL,
-				L"PawnIO 驱动已安装但初始化失败。\n温度监控功能将不可用。\n\n请尝试重新安装 PawnIO 或重启计算机。",
-				L"TrayS - PawnIO 错误",
-				MB_OK | MB_ICONWARNING);
-		}
 	}
 	else
 	{
-		// PawnIO未安装 - 检查用户之前是否选择跳过
 		bPawnIoReady = FALSE;
-		// 首次运行时提示 (通过检查TraySave中的标记判断是否已提示过)
-		// 这里先简单弹窗，后续可以保存用户选择到TrayS.dat
-		int ret = MessageBox(NULL,
-			L"TrayS 需要 PawnIO 驱动来读取 CPU 温度。\n\n"
-			L"PawnIO 是一个开源的轻量级硬件访问驱动，\n"
-			L"用于替代已知存在安全漏洞的 WinRing0。\n\n"
-			L"点击\"是\"打开 PawnIO 下载页面\n"
-			L"点击\"否\"跳过温度监控（其他功能正常）",
-			L"TrayS - 需要安装 PawnIO",
-			MB_YESNO | MB_ICONQUESTION);
-		if (ret == IDYES)
-		{
-			ShellExecuteW(NULL, L"open", L"https://github.com/namazso/PawnIO", NULL, NULL, SW_SHOWNORMAL);
-		}
-		// 用户选择跳过，CPU温度显示为0，GPU温度仍然可用(NvAPI/ADL)
 	}
 #ifdef _WIN64
 	hNVDLL = LoadLibrary(L"nvapi64.dll");
@@ -1171,7 +1147,7 @@ DWORD WINAPI GetDataThreadProc(PVOID pParam)//获取温度占用硬盘线程
 				HeapFree(GetProcessHeap(), 0, pProcessTime);
 				pProcessTime = NULL;
 			}
-			if (TraySave.bMonitorTemperature)
+			if (TraySave.bMonitorTemperature && TrayData)
 			{
 				// CPU温度 (通过PawnIO)
 				if (bPawnIoReady)

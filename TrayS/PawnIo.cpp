@@ -81,14 +81,14 @@ static BOOL PawnIo_LoadBinFromResource(HANDLE hDevice, int resourceId)
 int PawnIo_IsInstalled(void)
 {
 	HKEY hKey = NULL;
-	BOOL installed = FALSE;
+	int installed = 0;
 
 	// 先检查64位注册表视图
 	if (RegOpenKeyExW(HKEY_LOCAL_MACHINE,
 		L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\PawnIO",
 		0, KEY_READ | KEY_WOW64_64KEY, &hKey) == ERROR_SUCCESS)
 	{
-		installed = TRUE;
+		installed = 1;
 		RegCloseKey(hKey);
 	}
 	// 再检查32位视图 (WOW6432Node)
@@ -96,8 +96,21 @@ int PawnIo_IsInstalled(void)
 		L"SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\PawnIO",
 		0, KEY_READ, &hKey) == ERROR_SUCCESS)
 	{
-		installed = TRUE;
+		installed = 1;
 		RegCloseKey(hKey);
+	}
+
+	// 额外检查: 设备路径是否可访问 (防止驱动已卸载但注册表残留)
+	if (installed)
+	{
+		HANDLE hTest = CreateFileW(PIO_DEVICE_PATH,
+			GENERIC_READ,
+			FILE_SHARE_READ | FILE_SHARE_WRITE,
+			NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+		if (hTest == INVALID_HANDLE_VALUE)
+			installed = 0;
+		else
+			CloseHandle(hTest);
 	}
 
 	return installed;
