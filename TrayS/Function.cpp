@@ -987,61 +987,13 @@ BOOL AutoRun(BOOL GetSet, BOOL bAutoRun,const WCHAR* szName)//��ȡ����
 }
 BOOL SetWindowCompositionAttribute(HWND hWnd, ACCENT_STATE mode, DWORD AlphaColor,BOOL bWin11)
 {
+	pfnSetWindowCompositionAttribute pSetWindowCompositionAttribute = NULL;
 	if (mode == ACCENT_DISABLED)
 	{
 		SendMessage(hWnd, WM_THEMECHANGED, 0, 0);
-		// Win11: 恢复默认背景
-		if (bWin11)
-		{
-			HMODULE hDwm = GetModuleHandle(L"dwmapi.dll");
-			if (hDwm)
-			{
-				typedef HRESULT(WINAPI* pfnDwmSetWindowAttribute)(HWND, DWORD, LPCVOID, DWORD);
-				auto pDwmSetWindowAttribute = (pfnDwmSetWindowAttribute)GetProcAddress(hDwm, "DwmSetWindowAttribute");
-				if (pDwmSetWindowAttribute)
-				{
-					int backdropType = 0; // DWMSBT_AUTO
-					pDwmSetWindowAttribute(hWnd, 38, &backdropType, sizeof(int));
-				}
-			}
-		}
 		return TRUE;
 	}
-
-	// Win11: 优先使用 DwmSetWindowAttribute(38) 设置背景类型
-	if (bWin11)
-	{
-		HMODULE hDwm = GetModuleHandle(L"dwmapi.dll");
-		if (hDwm)
-		{
-			typedef HRESULT(WINAPI* pfnDwmSetWindowAttribute)(HWND, DWORD, LPCVOID, DWORD);
-			auto pDwmSetWindowAttribute = (pfnDwmSetWindowAttribute)GetProcAddress(hDwm, "DwmSetWindowAttribute");
-			if (pDwmSetWindowAttribute)
-			{
-				int backdropType;
-				switch (mode)
-				{
-				case ACCENT_ENABLE_TRANSPARENTGRADIENT:
-					backdropType = 1; // DWMSBT_NONE - 透明
-					break;
-				case ACCENT_ENABLE_BLURBEHIND:
-				case ACCENT_ENABLE_ACRYLICBLURBEHIND:
-					backdropType = 3; // DWMSBT_TRANSIENTWINDOW - Acrylic
-					break;
-				default:
-					backdropType = 1; // DWMSBT_NONE
-					break;
-				}
-				HRESULT hr = pDwmSetWindowAttribute(hWnd, 38, &backdropType, sizeof(int));
-				if (SUCCEEDED(hr))
-					return TRUE;
-			}
-		}
-	}
-
-	// 回退: 使用 SetWindowCompositionAttribute (Win10 / 旧Win11)
 	BOOL ret = FALSE;
-	pfnSetWindowCompositionAttribute pSetWindowCompositionAttribute = NULL;
 	HMODULE hUser = GetModuleHandle(L"user32.dll");
 	if (hUser)
 		pSetWindowCompositionAttribute = (pfnSetWindowCompositionAttribute)GetProcAddress(hUser, "SetWindowCompositionAttribute");

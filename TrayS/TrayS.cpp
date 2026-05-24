@@ -2656,7 +2656,7 @@ INT_PTR CALLBACK TaskTipsProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPa
 							RECT frc = rc;
 							if (nIndex + 1 == g_nDiskCache)
 								rc.right = crc.right * 92 / 100 - 2;
-							frc.right = frc.left + (rc.right - rc.left) * (int)((g_DiskCache[nIndex].TotalBytes - g_DiskCache[nIndex].FreeBytes) / g_DiskCache[nIndex].TotalBytes);
+							frc.right = frc.left + (int)((UINT64)(rc.right - rc.left) * (g_DiskCache[nIndex].TotalBytes - g_DiskCache[nIndex].FreeBytes) / g_DiskCache[nIndex].TotalBytes);
 							FillRect(mdc, &rc, hb1);
 							if (g_DiskCache[nIndex].FreeBytes < g_DiskCache[nIndex].TotalBytes / 10)
 								FillRect(mdc, &frc, hb2);
@@ -4362,13 +4362,10 @@ INT_PTR CALLBACK MainProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 					{
 						SetWindowCompositionAttribute(hTray, TraySave.aMode[iWindowMode], TraySave.dAlphaColor[iWindowMode],(BOOL)hWin11UI);
 					}
-					if (!hWin11UI)
-					{
-						LONG_PTR exStyle = GetWindowLongPtr(hTray, GWL_EXSTYLE);
-						exStyle |= WS_EX_LAYERED;
-						SetWindowLongPtr(hTray, GWL_EXSTYLE, exStyle);
-						SetLayeredWindowAttributes(hTray, 0, (BYTE)TraySave.bAlpha[iWindowMode], LWA_ALPHA);
-					}
+					LONG_PTR exStyle = GetWindowLongPtr(hTray, GWL_EXSTYLE);
+					exStyle |= WS_EX_LAYERED;
+					SetWindowLongPtr(hTray, GWL_EXSTYLE, exStyle);
+					SetLayeredWindowAttributes(hTray, 0, (BYTE)TraySave.bAlpha[iWindowMode], LWA_ALPHA);
 				}
 				HWND hSecondaryTray = FindWindow(szSecondaryTray, NULL);
 				while (hSecondaryTray)
@@ -4384,13 +4381,10 @@ INT_PTR CALLBACK MainProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 					}
 					if (TraySave.aMode[iWindowMode] != ACCENT_DISABLED || oldWindowMode != iWindowMode)
 						SetWindowCompositionAttribute(hSecondaryTray, TraySave.aMode[iWindowMode], TraySave.dAlphaColor[iWindowMode], (BOOL)hWin11UI);
-					if (!hWin11UI)
-					{
-						LONG_PTR exStyle = GetWindowLongPtr(hSecondaryTray, GWL_EXSTYLE);
-						exStyle |= WS_EX_LAYERED;
-						SetWindowLongPtr(hSecondaryTray, GWL_EXSTYLE, exStyle);
-						SetLayeredWindowAttributes(hSecondaryTray, 0, (BYTE)TraySave.bAlpha[iWindowMode], LWA_ALPHA);
-					}
+					LONG_PTR exStyle = GetWindowLongPtr(hSecondaryTray, GWL_EXSTYLE);
+					exStyle |= WS_EX_LAYERED;
+					SetWindowLongPtr(hSecondaryTray, GWL_EXSTYLE, exStyle);
+					SetLayeredWindowAttributes(hSecondaryTray, 0, (BYTE)TraySave.bAlpha[iWindowMode], LWA_ALPHA);
 					hSecondaryTray = FindWindowEx(NULL, hSecondaryTray, szSecondaryTray, NULL);
 				}
 			}
