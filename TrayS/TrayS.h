@@ -353,6 +353,17 @@ PIORUNTIME g_PawnIo = { INVALID_HANDLE_VALUE, FALSE, FALSE };
 BOOL bPawnIoReady = FALSE;
 #define hOHMA NULL  // 已移除OpenHardwareMonitorApi, 保留宏避免大面积修改
 
+////////////////////////////////////////磁盘空间缓存 (后台线程更新，避免在WM_ERASEBKGND中做磁盘I/O)
+typedef struct _DISKCACHE {
+	WCHAR Drive[4];      // "C:\"
+	UINT64 TotalBytes;
+	UINT64 FreeBytes;
+	BOOL   bValid;
+} DISKCACHE;
+DISKCACHE g_DiskCache[26]; // 最多26个驱动器
+int g_nDiskCache = 0;
+HFONT g_hTipsFont = NULL; // Tips窗口字体缓存
+
 HMODULE hPDH = NULL;
 ////////////////////////////////////////////////查找隐藏试最大化窗口
 HMODULE hDwmapi=NULL;

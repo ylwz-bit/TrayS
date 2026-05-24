@@ -454,6 +454,7 @@ void CloseTaskBar()
 		DestroyWindow(hTaskBar);
 	if (IsWindow(hTaskTips))
 		DestroyWindow(hTaskTips);
+	if (g_hTipsFont) { DeleteObject(g_hTipsFont); g_hTipsFont = NULL; }
 	if (IsWindow(hPrice))
 		DestroyWindow(hPrice);
 	if(IsWindow(hTime))
@@ -1155,6 +1156,31 @@ DWORD WINAPI GetDataThreadProc(PVOID pParam)//获取温度占用硬盘线程
 			{
 				HeapFree(GetProcessHeap(), 0, pProcessTime);
 				pProcessTime = NULL;
+			}
+			// 更新磁盘空间缓存
+			{
+				WCHAR wDrive[MAX_PATH];
+				DWORD dwLen = GetLogicalDriveStrings(MAX_PATH, wDrive);
+				g_nDiskCache = 0;
+				if (dwLen != 0)
+				{
+					DWORD driver_number = dwLen / 4;
+					for (DWORD i = 0; i < driver_number && g_nDiskCache < 26; i++)
+					{
+						LPWSTR dName = wDrive + i * 4;
+						if (GetDriveType(dName) != DRIVE_CDROM && dName[0] != L'A')
+						{
+							g_DiskCache[g_nDiskCache].Drive[0] = dName[0];
+							g_DiskCache[g_nDiskCache].Drive[1] = dName[1];
+							g_DiskCache[g_nDiskCache].Drive[2] = 0;
+							g_DiskCache[g_nDiskCache].bValid = GetDiskFreeSpaceEx(dName,
+								(PULARGE_INTEGER)&g_DiskCache[g_nDiskCache].FreeBytes,
+								(PULARGE_INTEGER)&g_DiskCache[g_nDiskCache].TotalBytes,
+								NULL);
+							g_nDiskCache++;
+						}
+					}
+				}
 			}
 			if (TraySave.bMonitorTemperature && TrayData)
 			{
@@ -2370,8 +2396,9 @@ INT_PTR CALLBACK TaskTipsProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPa
 			//		if (bErasebkgnd)
 			{
 				TraySave.TipsFont.lfHeight = DPI(TraySave.TipsFontSize);
-				HFONT hTipsFont = CreateFontIndirect(&TraySave.TipsFont); //创建字体
-				HFONT oldFont = (HFONT)SelectObject(mdc, hTipsFont);
+				if (!g_hTipsFont)
+					g_hTipsFont = CreateFontIndirect(&TraySave.TipsFont);
+				HFONT oldFont = (HFONT)SelectObject(mdc, g_hTipsFont);
 				WCHAR sz[64];
 				SetBkMode(mdc, TRANSPARENT);
 				COLORREF rgb;
@@ -2615,45 +2642,28 @@ INT_PTR CALLBACK TaskTipsProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPa
 				hb3 = CreateSolidBrush(RGB(0, 128, 198));
 				hb4 = CreateSolidBrush(RGB(0, 148, 0));
 				SetTextColor(mdc, RGB(255, 255, 255));
-				/*
-							HBRUSH hb;
-							hb=CreateSolidBrush(RGB(0,38,0));
-							FillRect(mdc, &rc, hb);
-							DeleteObject(hb);
-				*/
-				WCHAR wDrive[MAX_PATH];
-				DWORD dwLen = GetLogicalDriveStrings(MAX_PATH, wDrive);
-				if (dwLen != 0)
+				if (g_nDiskCache > 0)
 				{
-					DWORD driver_number = dwLen / 4;
 					rc.left = crc.right * 8 / 100 + 3;
-					int dw = crc.right * 84 / 100 / driver_number - 2;
+					int dw = crc.right * 84 / 100 / g_nDiskCache - 2;
 					rc.right = rc.left + dw;
 					rc.top += 3;
 					rc.bottom -= 1;
-					for (DWORD nIndex = 0; nIndex < driver_number; nIndex++)
+					for (int nIndex = 0; nIndex < g_nDiskCache; nIndex++)
 					{
-						LPWSTR dName = wDrive + nIndex * 4;
-						UINT64 lpFreeBytesAvailable = 0;
-						UINT64 lpTotalNumberOfBytes = 0;
-						UINT64 lpTotalNumberOfFreeBytes = 0;
-						if (GetDriveType(dName) != DRIVE_CDROM && dName[0] != L'A')
+						if (g_DiskCache[nIndex].bValid && g_DiskCache[nIndex].TotalBytes > 0)
 						{
-							if (GetDiskFreeSpaceEx(dName, (PULARGE_INTEGER)&lpFreeBytesAvailable, (PULARGE_INTEGER)&lpTotalNumberOfBytes, (PULARGE_INTEGER)&lpTotalNumberOfFreeBytes))
-							{
-								RECT frc = rc;
-								if (nIndex + 1 == driver_number)
-									rc.right = crc.right * 92 / 100 - 2;
-								frc.right = frc.left + (rc.right - rc.left) * (lpTotalNumberOfBytes - lpTotalNumberOfFreeBytes) / lpTotalNumberOfBytes;
-								FillRect(mdc, &rc, hb1);
-								if (lpTotalNumberOfFreeBytes < lpTotalNumberOfBytes * 1 / 10)
-									FillRect(mdc, &frc, hb2);
-								else
-									FillRect(mdc, &frc, hb3);
-							}
-							dName[2] = 0;
+							RECT frc = rc;
+							if (nIndex + 1 == g_nDiskCache)
+								rc.right = crc.right * 92 / 100 - 2;
+							frc.right = frc.left + (rc.right - rc.left) * (int)((g_DiskCache[nIndex].TotalBytes - g_DiskCache[nIndex].FreeBytes) / g_DiskCache[nIndex].TotalBytes);
+							FillRect(mdc, &rc, hb1);
+							if (g_DiskCache[nIndex].FreeBytes < g_DiskCache[nIndex].TotalBytes / 10)
+								FillRect(mdc, &frc, hb2);
+							else
+								FillRect(mdc, &frc, hb3);
 						}
-						DrawText(mdc, dName, lstrlen(dName), &rc, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+						DrawText(mdc, g_DiskCache[nIndex].Drive, lstrlen(g_DiskCache[nIndex].Drive), &rc, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
 						OffsetRect(&rc, dw + 2, 0);
 						if (rc.right - 3 > crc.right * 92 / 100)
 							break;
@@ -2718,7 +2728,6 @@ INT_PTR CALLBACK TaskTipsProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPa
 				rc.right = crc.right;
 				rc.left = crc.right * 92 / 100;
 				DrawText(mdc, sexit, lstrlen(sexit), &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
-				DeleteObject(hTipsFont);
 				SelectObject(mdc, oldFont);
 			}
 			GetClientRect(hDlg, &rc);
@@ -3282,6 +3291,7 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 					HeapFree(GetProcessHeap(), 0, pProcessTime);
 					pProcessTime = NULL;
 				}
+				if (g_hTipsFont) { DeleteObject(g_hTipsFont); g_hTipsFont = NULL; }
 				DestroyWindow(hTaskTips);
 			}
 			if (!IsWindow(hPrice))
@@ -3595,6 +3605,7 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 					GetWindowRect(hTaskTips, &brc);
 					if (!PtInRect(&brc, pt))
 					{
+						if (g_hTipsFont) { DeleteObject(g_hTipsFont); g_hTipsFont = NULL; }
 						DestroyWindow(hTaskTips);
 					}
 				}
@@ -4350,13 +4361,14 @@ INT_PTR CALLBACK MainProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 					if (TraySave.aMode[iWindowMode] != ACCENT_DISABLED || oldWindowMode != iWindowMode)
 					{
 						SetWindowCompositionAttribute(hTray, TraySave.aMode[iWindowMode], TraySave.dAlphaColor[iWindowMode],(BOOL)hWin11UI);
-//						HWND hTray11=FindWindowEx(hTray, 0, L"Windows.UI.Composition.DesktopWindowContentBridge",NULL);
-//						SetWindowCompositionAttribute(hTray11, TraySave.aMode[iWindowMode], TraySave.dAlphaColor[iWindowMode]);
 					}
-					LONG_PTR exStyle = GetWindowLongPtr(hTray, GWL_EXSTYLE);
-					exStyle |= WS_EX_LAYERED;
-					SetWindowLongPtr(hTray, GWL_EXSTYLE, exStyle);
-					SetLayeredWindowAttributes(hTray, 0, (BYTE)TraySave.bAlpha[iWindowMode], LWA_ALPHA);
+					if (!hWin11UI)
+					{
+						LONG_PTR exStyle = GetWindowLongPtr(hTray, GWL_EXSTYLE);
+						exStyle |= WS_EX_LAYERED;
+						SetWindowLongPtr(hTray, GWL_EXSTYLE, exStyle);
+						SetLayeredWindowAttributes(hTray, 0, (BYTE)TraySave.bAlpha[iWindowMode], LWA_ALPHA);
+					}
 				}
 				HWND hSecondaryTray = FindWindow(szSecondaryTray, NULL);
 				while (hSecondaryTray)
@@ -4372,10 +4384,13 @@ INT_PTR CALLBACK MainProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 					}
 					if (TraySave.aMode[iWindowMode] != ACCENT_DISABLED || oldWindowMode != iWindowMode)
 						SetWindowCompositionAttribute(hSecondaryTray, TraySave.aMode[iWindowMode], TraySave.dAlphaColor[iWindowMode], (BOOL)hWin11UI);
-					LONG_PTR exStyle = GetWindowLongPtr(hSecondaryTray, GWL_EXSTYLE);
-					exStyle |= WS_EX_LAYERED;
-					SetWindowLongPtr(hSecondaryTray, GWL_EXSTYLE, exStyle);
-					SetLayeredWindowAttributes(hSecondaryTray, 0, (BYTE)TraySave.bAlpha[iWindowMode], LWA_ALPHA);
+					if (!hWin11UI)
+					{
+						LONG_PTR exStyle = GetWindowLongPtr(hSecondaryTray, GWL_EXSTYLE);
+						exStyle |= WS_EX_LAYERED;
+						SetWindowLongPtr(hSecondaryTray, GWL_EXSTYLE, exStyle);
+						SetLayeredWindowAttributes(hSecondaryTray, 0, (BYTE)TraySave.bAlpha[iWindowMode], LWA_ALPHA);
+					}
 					hSecondaryTray = FindWindowEx(NULL, hSecondaryTray, szSecondaryTray, NULL);
 				}
 			}
