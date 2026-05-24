@@ -119,6 +119,7 @@ TrayS.sln
 | `/start` | 启动服务 |
 | `/stop` | 停止服务 |
 
-## 许可
+## 致谢
 
-原作者: cgbsmy (https://github.com/cgbsmy/TrayS)
+- **原作者 [cgbsmy](https://github.com/cgbsmy/TrayS)** - 感谢制作出如此精简优秀的系统监控工具，纯 Win32 API 实现，零依赖、单文件、极低资源占用，是轻量化软件的典范
+- **[PawnIO](https://github.com/namazso/PawnIOLib)** - 提供安全轻量的硬件访问驱动，替代存在安全漏洞的 WinRing0
