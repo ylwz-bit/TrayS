@@ -224,7 +224,9 @@ int PawnIo_GetCpuTemp(PIORUNTIME* pRuntime, DWORD Core)
 {
 	DWORD eax, edx, eax1a2, edx1a2;
 	int Tjunction, tjMax, deltaT;
+#ifdef _DEBUG
 	WCHAR dbg[128];
+#endif
 
 	if (!pRuntime || !pRuntime->bLoaded)
 		return 0;
@@ -260,16 +262,20 @@ int PawnIo_GetCpuTemp(PIORUNTIME* pRuntime, DWORD Core)
 				deltaT = (eax & 0x007F0000) >> 16;
 				tccOffset = (eax1a2 >> 24) & 0x3F; // bits 29:24
 				rawTemp = Tjunction - deltaT - tccOffset * 2;
+#ifdef _DEBUG
 				wsprintfW(dbg, L"[TDBG] 0x1A2=%08X TjMax=%d TCC=%d 0x19C=%08X dT=%d temp=%d\n",
 					eax1a2, Tjunction, tccOffset, eax, deltaT, rawTemp);
 				OutputDebugStringW(dbg);
+#endif
 				return rawTemp;
 			}
+#ifdef _DEBUG
 			else
 			{
 				wsprintfW(dbg, L"[TDBG] 0x19C=%08X bit31=0 INVALID\n", eax);
 				OutputDebugStringW(dbg);
 			}
+#endif
 		}
 	}
 	else
