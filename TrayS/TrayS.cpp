@@ -396,14 +396,18 @@ void ReadReg()//读取设置
 	HANDLE hFile = CreateFile(szTraySave, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_ARCHIVE, NULL);
 	if (hFile!= INVALID_HANDLE_VALUE)
 	{
-		DWORD dwBytes;
-		TRAYSAVE tempSave;
-		EnterCriticalSection(&g_csData);
-		if (ReadFile(hFile, &tempSave, sizeof tempSave, &dwBytes, NULL) && dwBytes == sizeof tempSave)
+		DWORD dwFileSize = GetFileSize(hFile, NULL);
+		if (dwFileSize == sizeof(TRAYSAVE))
 		{
-			memcpy(&TraySave, &tempSave, sizeof(TRAYSAVE));
+			DWORD dwBytes;
+			TRAYSAVE tempSave;
+			EnterCriticalSection(&g_csData);
+			if (ReadFile(hFile, &tempSave, sizeof tempSave, &dwBytes, NULL) && dwBytes == sizeof tempSave)
+			{
+				memcpy(&TraySave, &tempSave, sizeof(TRAYSAVE));
+			}
+			LeaveCriticalSection(&g_csData);
 		}
-		LeaveCriticalSection(&g_csData);
 		CloseHandle(hFile);
 	}
 }
