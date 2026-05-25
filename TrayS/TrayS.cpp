@@ -4751,6 +4751,9 @@ INT_PTR CALLBACK SettingProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 						return (INT_PTR)TRUE;
 			*/
 			//			SendMessage(hReBarWnd, WM_SETREDRAW, TRUE, 0);
+				DestroyWindow(hDlg);
+				return (INT_PTR)TRUE;
+				/* replaced: bRealClose = TRUE; SendMessage(hMain, WM_CLOSE, NULL, NULL); */
 			bRealClose = TRUE;
 			SendMessage(hMain, WM_CLOSE, NULL, NULL);
 			return (INT_PTR)TRUE;

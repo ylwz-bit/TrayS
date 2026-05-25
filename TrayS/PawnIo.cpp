@@ -248,6 +248,12 @@ int PawnIo_GetCpuTemp(PIORUNTIME* pRuntime, DWORD Core)
 			if (tjMax > 0 && tjMax <= 150)
 				Tjunction = tjMax;
 		}
+#ifdef _DEBUG
+		else
+		{
+			OutputDebugStringW(L"[TDBG] ReadMsr 0x1A2 FAILED\n");
+		}
+#endif
 
 		// MSR 0x19C: IA32_THERM_STATUS
 		// bit 31: Digital Readout Valid (必须为1)
@@ -263,8 +269,8 @@ int PawnIo_GetCpuTemp(PIORUNTIME* pRuntime, DWORD Core)
 				tccOffset = (eax1a2 >> 24) & 0x3F; // bits 29:24
 				rawTemp = Tjunction - deltaT - tccOffset * 2;
 #ifdef _DEBUG
-				wsprintfW(dbg, L"[TDBG] 0x1A2=%08X TjMax=%d TCC=%d 0x19C=%08X dT=%d temp=%d\n",
-					eax1a2, Tjunction, tccOffset, eax, deltaT, rawTemp);
+				wsprintfW(dbg, L"[TDBG] Core=%d 0x1A2=%08X TjMax=%d TCC=%d 0x19C=%08X dT=%d temp=%d\n",
+					Core, eax1a2, Tjunction, tccOffset, eax, deltaT, rawTemp);
 				OutputDebugStringW(dbg);
 #endif
 				return rawTemp;
@@ -277,6 +283,12 @@ int PawnIo_GetCpuTemp(PIORUNTIME* pRuntime, DWORD Core)
 			}
 #endif
 		}
+#ifdef _DEBUG
+		else
+		{
+			OutputDebugStringW(L"[TDBG] ReadMsr 0x19C FAILED\n");
+		}
+#endif
 	}
 	else
 	{
