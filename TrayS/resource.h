@@ -24,7 +24,6 @@
 #define IDR_AMD_FAMILY0F                201
 #define IDR_AMD_FAMILY10                202
 #define IDR_AMD_FAMILY17                203
-#define IDD_PRICE                       142
 #define IDC_RADIO_DEFAULT               1001
 #define IDC_RADIO_TRANSPARENT           1002
 #define IDC_RADIO_BLURBEHIND            1003
@@ -71,7 +70,6 @@
 #define IDC_EDIT11                      1048
 #define IDC_EDIT12                      1049
 #define IDC_CHECK_SOUND                 1050
-#define IDC_EDIT_OKX_WEB                1050
 #define IDC_CHECK_MONITOR_SIMPLE        1051
 #define IDC_CHECK1                      1051
 #define IDC_RESTORE_DEFAULT             1052
@@ -129,7 +127,6 @@
 #define IDC_EDIT28                      1079
 #define IDC_CHECK_18                    1079
 #define IDC_EDIT29                      1080
-#define IDC_CHECK_PRICE                 1081
 #define IDC_CHECK_22                    1081
 #define IDC_EDIT_22                     1082
 #define IDC_BUTTON_SELECT_NET           1082
@@ -152,10 +149,7 @@
 #define IDC_BUTTON_COLOR_TRAFFIC_HIGH   1098
 #define IDC_BUTTON_COLOR_LOW            1099
 #define IDC_BUTTON_COLOR_MEDUIM         1100
-#define IDC_TWOFOUR                     1100
 #define IDC_BUTTON_COLOR_HIGH           1101
-#define IDC_BUTTON_COLOR_PRICE_LOW      1102
-#define IDC_BUTTON_COLOR_PRICE_HIGH     1103
 #define ID_32800                        32800
 #define IDC_SELECT_ALL                  33000
 #define IDC_DISK_ALL                    33200

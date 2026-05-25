@@ -109,7 +109,6 @@ HWND hSetting;//设置窗口句柄
 HWND hTaskBar;//工具窗口句柄
 HWND hTaskTips;//提示窗口句柄
 HWND hTime;//秒窗口
-HWND hPrice;//行情窗口
 //HWND hForeground;
 HWND hTray=NULL;//系统主任务栏窗口句柄
 HWND hTaskWnd;//系统主任务列表窗口句柄
@@ -138,12 +137,6 @@ typedef struct _TRAYDATA
 	ULONG64 m_last_out_bytes;//总上一秒上传速度
 	ULONG64 s_in_byte;//总下载速度
 	ULONG64 s_out_byte;//总上传速度
-	float fLastPrice1,fLastPrice2, fOpenPrice1, fOpenPrice2, fLastPrice3, fLastPrice4, fOpenPrice3, fOpenPrice4;//行情当前与昨天
-	WCHAR szLastPrice1[16];//行情数值字符串
-	WCHAR szLastPrice2[16];//行情数值字符串
-	WCHAR szLastPrice3[16];//行情数值字符串
-	WCHAR szLastPrice4[16];//行情数值字符串
-	int iPriceUpDown[4];//行情升降提醒
 	DWORD iHddTemperature;//硬盘温度
 	DWORD iTemperature1;//CPU温度
 	DWORD iTemperature2;//GPU温度
@@ -177,7 +170,6 @@ DWORD WINAPI MainThreadProc(PVOID pParam);
 DWORD WINAPI GetDataThreadProc(PVOID pParam);
 //HANDLE hMainThread = NULL;
 HANDLE hGetDataThread = NULL;
-HANDLE hPriceThread = NULL;
 HANDLE hMap = NULL;
 BOOL bShadow = FALSE;//显示阴影文字
 COLORREF bColor = 0x181818;//阴影颜色
@@ -240,19 +232,6 @@ typedef struct _TRAYSAVE//默认参数
 	WCHAR szDiskWriteSec[8];//硬盘写入显示的文字
 	WCHAR szDiskName[8];//硬盘名称
 	WCHAR szDisk;//盘符
-	BOOL bMonitorPrice;//显示行情
-	float HighRemind[12];//超过价格提醒
-	float LowRemind[12];//低过价格提醒
-	BOOL bCheckHighRemind[12];
-	BOOL bCheckLowRemind[12];
-	WCHAR szPriceName1[64];
-	WCHAR szPriceName2[64];
-	WCHAR szPriceName3[64];
-	WCHAR szPriceName4[64];
-	int iPriceInterface[4];
-	WCHAR szOKXWeb[32];
-	BOOL bTwoFour;
-	COLORREF cPriceColor[4];//行情颜色
 	BOOL bTrayStyle;//任务栏风格开关
 }TRAYSAVE;
 TRAYSAVE TraySave = {
@@ -306,26 +285,12 @@ TRAYSAVE TraySave = {
 	L"硬盘:",
 	0,
 	FALSE,
-	{0},
-	{0},
-	{0},
-	{0},
-	L"sh000001",
-	L"sz399001",
-	L"BTC-USDT-SWAP",
-	L"ETH-USDT-SWAP",
-	{0,0,1,1},
-	L"www.okx.com",
-	FALSE,
-	{RGB(0, 168, 0), RGB(255, 0, 0),RGB(0,255,128),RGB(255,128,0)},
-	TRUE
 };
 int wTraffic;//流量宽度
 int wTemperature;//温度宽度
 int wUsage;//利用率宽度
 int wDisk;//硬盘流量宽度
 int wTime;//时间宽度
-int wPrice;//行情宽度
 int wHeight;//监控字符高度
 POINT pTime;//秒位置
 HFONT hFont;//监控窗口字体
@@ -530,7 +495,6 @@ INT_PTR CALLBACK    SettingProc(HWND, UINT, WPARAM, LPARAM);//设置窗口过程
 INT_PTR CALLBACK    TaskBarProc(HWND, UINT, WPARAM, LPARAM);//任务栏监控窗口过程
 INT_PTR CALLBACK    TaskTipsProc(HWND, UINT, WPARAM, LPARAM);//提示窗口过程
 INT_PTR CALLBACK    TimeProc(HWND, UINT, WPARAM, LPARAM);//秒窗口过程
-INT_PTR CALLBACK    PriceProc(HWND, UINT, WPARAM, LPARAM);//行情窗口过程
 void SetTaskBarPos(HWND, HWND, HWND, HWND, BOOL);//设置任务栏图标位置
 int DrawShadowText(HDC hDC, LPCTSTR lpString, int nCount, LPRECT lpRect, UINT uFormat);//绘制阴影文字
 void FreeTemperatureDLL();//
@@ -540,4 +504,3 @@ int GetProcessMemUsage();//获取内存使用大小
 void GetProcessCpuUsage();//获取进程CPU使用率
 void GetTrafficStr(WCHAR* sz, ULONG64 uByte, BOOL bBit,int iUnit=0);//流量转字符串
 void ShowSelectMenu(BOOL bNet);//显示网卡/硬盘菜单
-void DrawPrice(HDC mdc, LPRECT crc, float fLast, float fOpen, WCHAR* szLast, int iPriceUpDown);//绘制行情
