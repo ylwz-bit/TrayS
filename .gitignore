@@ -360,4 +360,15 @@ MigrationBackup/
 .ionide/
 
 # Fody - auto-generated XML schema
-FodyWeavers.xsdPLAN.md
+FodyWeavers.xsd
+
+# 项目特定忽略
+TranslucentBar/
+TranslucentTB/
+LibreHardwareMonitor/
+PLAN.md
+*.png
+*.jpg
+*.zip
+*.txt
+!README.md
