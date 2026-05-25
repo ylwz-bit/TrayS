@@ -222,6 +222,10 @@ BOOL PawnIo_ReadSmn(PIORUNTIME* pRuntime, DWORD offset, DWORD* pValue)
 
 int PawnIo_GetCpuTemp(PIORUNTIME* pRuntime, DWORD Core)
 {
+	DWORD eax, edx, eax1a2, edx1a2;
+	int Tjunction, tjMax, deltaT;
+	WCHAR dbg[128];
+
 	if (!pRuntime || !pRuntime->bLoaded)
 		return 0;
 
@@ -229,66 +233,102 @@ int PawnIo_GetCpuTemp(PIORUNTIME* pRuntime, DWORD Core)
 
 	if (pRuntime->bIntel)
 	{
-		// Intel: 读MSR获取TjMax和热读数
-		DWORD eax = 0, edx = 0;
-		int Tjunction = 100;
+		eax = edx = 0;
+		Tjunction = 100;
 
 		// MSR 0x1A2: IA32_TEMPERATURE_TARGET
-		if (PawnIo_ReadMsr(pRuntime, 0x1A2, &eax, &edx))
+		// TjMax 在 bits 23:16 (Intel SDM)
+		// TCC Activation Offset 在 bits 29:24
+		eax1a2 = edx1a2 = 0;
+		if (PawnIo_ReadMsr(pRuntime, 0x1A2, &eax1a2, &edx1a2))
 		{
-			if (eax & 0x20000000)
-				Tjunction = 85;
+			tjMax = (eax1a2 >> 16) & 0xFF;
+			if (tjMax > 0 && tjMax <= 150)
+				Tjunction = tjMax;
 		}
 
 		// MSR 0x19C: IA32_THERM_STATUS
+		// bit 31: Digital Readout Valid (必须为1)
+		// bits 22:16: Digital Readout (7-bit distance to TjMax)
 		if (PawnIo_ReadMsr(pRuntime, 0x19C, &eax, &edx))
 		{
-			DWORD IAcore = (eax & 0xFF0000) >> 16;
-			return Tjunction - IAcore;
+			if (eax & 0x80000000) // Digital Readout Valid
+			{
+				int tccOffset;
+				int rawTemp;
+
+				deltaT = (eax & 0x007F0000) >> 16;
+				tccOffset = (eax1a2 >> 24) & 0x3F; // bits 29:24
+				rawTemp = Tjunction - deltaT - tccOffset * 2;
+				wsprintfW(dbg, L"[TDBG] 0x1A2=%08X TjMax=%d TCC=%d 0x19C=%08X dT=%d temp=%d\n",
+					eax1a2, Tjunction, tccOffset, eax, deltaT, rawTemp);
+				OutputDebugStringW(dbg);
+				return rawTemp;
+			}
+			else
+			{
+				wsprintfW(dbg, L"[TDBG] 0x19C=%08X bit31=0 INVALID\n", eax);
+				OutputDebugStringW(dbg);
+			}
 		}
 	}
 	else
 	{
-		// AMD: 检测family
 		int cpuInfo[4] = {};
+		int family, temp;
+		BOOL tempOffsetFlag;
+		DWORD smnValue;
+
+		// AMD: 检测family
 		__cpuid(cpuInfo, 1);
-		int family = ((cpuInfo[0] >> 20) & 0xFF) + ((cpuInfo[0] >> 8) & 0xF);
+		family = ((cpuInfo[0] >> 20) & 0xFF) + ((cpuInfo[0] >> 8) & 0xF);
 
 		if (family >= 0x17)
 		{
 			// AMD Family 17h+ (Zen系列): 通过SMN读取温度
 			// SMN 0x00059800: THM_TCON_CUR_TMP
-			DWORD smnValue = 0;
+			smnValue = 0;
 			if (PawnIo_ReadSmn(pRuntime, 0x00059800, &smnValue))
 			{
-				return (int)((smnValue >> 21) & 0x7F);
+				// bits 31:21: 温度值 (1/128 °C)
+				temp = (int)((smnValue >> 21) & 0x7F);
+
+				// 检查是否需要 -49 偏移 (某些 Ryzen 旧型号)
+				// RANGE_SEL (bit 19) 或 TJ_SEL (bits 17:16 都为1)
+				tempOffsetFlag = ((smnValue & 0x80000) != 0) ||
+				                      ((smnValue & 0x30000) == 0x30000);
+				if (tempOffsetFlag)
+					temp -= 49;
+
+				return temp;
 			}
 		}
 		else if (family > 0x0F)
 		{
-			// AMD Family 10h-16h: 通过MSR或MiscCtl读取
-			DWORD eax = 0, edx = 0;
-			if (PawnIo_ReadMsr(pRuntime, 0x000000E8, &eax, &edx)) // PStateDef可能包含温度
+			// AMD Family 10h-16h: 通过MiscCtl读取温度
+			long long input2[2] = { 0, 0xA4 };
+			long long output2[1] = {};
+			if (PawnIo_Execute(pRuntime->hDevice, "ioctl_read_miscctl", input2, 2, output2, 1))
 			{
-				// 备选: 尝试MiscCtl读取
-				long long input[2] = { 0, 0xA4 }; // cpu=0, offset=0xa4
-				long long output[1] = {};
-				if (PawnIo_Execute(pRuntime->hDevice, "ioctl_read_miscctl", input, 2, output, 1))
-				{
-					DWORD miscReg = (DWORD)(output[0] & 0xFFFFFFFF);
-					return (int)((miscReg >> 21) >> 3);
-				}
+				DWORD miscReg = (DWORD)(output2[0] & 0xFFFFFFFF);
+				return (int)(miscReg >> 21);
+			}
+			// 备选: MSR 0xE8
+			eax = edx = 0;
+			if (PawnIo_ReadMsr(pRuntime, 0x000000E8, &eax, &edx))
+			{
+				return (int)((eax >> 21) & 0x7F);
 			}
 		}
 		else
 		{
 			// AMD Family 0Fh: 通过thermtrip读取
-			long long input[2] = { 0, 0 }; // cpuIndex=0, coreIndex=0
-			long long output[1] = {};
-			if (PawnIo_Execute(pRuntime->hDevice, "ioctl_get_thermtrip", input, 2, output, 1))
+			long long input2[2] = { 0, 0 };
+			long long output2[1] = {};
+			if (PawnIo_Execute(pRuntime->hDevice, "ioctl_get_thermtrip", input2, 2, output2, 1))
 			{
-				DWORD miscReg = (DWORD)(output[0] & 0xFFFFFFFF);
-				return (int)(((miscReg & 0xFF0000) >> 16) - 49);
+				DWORD miscReg = (DWORD)(output2[0] & 0xFFFFFFFF);
+				return (int)((miscReg >> 16) & 0x7F) - 49;
 			}
 		}
 	}
