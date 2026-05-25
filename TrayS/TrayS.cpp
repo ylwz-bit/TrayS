@@ -216,6 +216,7 @@ pfnPdhRemoveCounter PdhRemoveCounter;
 pfnPdhCloseQuery PdhCloseQuery;
 pfnPdhGetFormattedCounterValue PdhGetFormattedCounterValue;
 BOOL bPDHFix = FALSE;
+UINT g_uTaskbarCreated = 0;
 void SwitchPDH(BOOL bOn)
 {
 	if (bOn)
@@ -1441,6 +1442,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	abd.uCallbackMessage = MSG_APPBAR_MSGID;
 	pSHAppBarMessage(ABM_NEW, &abd);
 	bThemeMode = GetSystemUsesLightTheme();
+	g_uTaskbarCreated = RegisterWindowMessage(L"TaskbarCreated");
 	//////////////////////////////////////////////////////////////////////////////////设置通知栏图标
 	nid.cbSize = sizeof NOTIFYICONDATA;
 	nid.uID = WM_IAWENTRAY;
@@ -3935,6 +3937,12 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 INT_PTR CALLBACK MainProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)//主窗口过程
 {
 	UNREFERENCED_PARAMETER(lParam);
+	if (g_uTaskbarCreated && message == g_uTaskbarCreated)
+	{
+		if (TraySave.bTrayIcon)
+			pShell_NotifyIcon(NIM_ADD, &nid);
+		return (INT_PTR)TRUE;
+	}
 	switch (message)
 	{
 	case MSG_APPBAR_MSGID:
