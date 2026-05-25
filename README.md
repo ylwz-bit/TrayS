@@ -8,7 +8,6 @@ Windows 系统托盘监控工具，在任务栏嵌入实时系统监控面板。
 - **CPU/内存占用** - 显示 CPU 和内存使用百分比
 - **温度监控** - CPU/GPU/硬盘温度（通过 PawnIO 直读 MSR/SMN）
 - **磁盘监控** - 磁盘读写速率和占用率
-- **行情监控** - 支持 OKX 加密货币和新浪财经股票实时价格
 - **秒表显示** - 在系统时钟旁显示秒数
 - **任务栏美化** - 支持任务栏透明/模糊/亚克力效果
 - **Tips 详情** - 鼠标悬停弹出详细信息（各网卡流量、Top6 进程、磁盘/内存使用条形图）
@@ -98,7 +97,6 @@ TrayS.sln
 | atiadlxx.dll (ADL SDK) | AMD GPU 温度 |
 | PDH (Performance Data Helper) | CPU 使用率、磁盘 I/O |
 | iphlpapi.dll | 网络流量监控 |
-| WinHttp | HTTP 请求 (行情数据) |
 | IAccessible COM | 任务栏图标位置枚举 |
 | FileMapping 共享内存 | 守护进程与子进程通信 |
 | GDI 双缓冲 | 所有自绘 UI |
