@@ -3883,6 +3883,8 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 				else
 					DrawShadowText(mdc, sz, sLen, &crc, DT_CENTER | DT_VCENTER | DT_SINGLELINE, bColor, bShadow);
 				}
+					SelectObject(mdc, oldFont);
+				}
 			//		GetClientRect(hDlg, &rc);
 			if (VTray)
 				InflateRect(&rc, wSpace / 2, 0);
@@ -3929,7 +3931,6 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 	break;
 	}
 	return FALSE;
-}
 }
 INT_PTR CALLBACK MainProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)//主窗口过程
 {
