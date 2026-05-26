@@ -533,7 +533,7 @@ void OpenTaskBar()
 			if (!TraySave.bMonitorFuse && TraySave.bMonitorFloat)
 			{
 			}
-			else
+			else if(rovi.dwBuildNumber < 22000 || TraySave.bTrayStyle)
 				SetWindowCompositionAttribute(hTaskBar, ACCENT_ENABLE_TRANSPARENT, 0x00111111);
 			ShowWindow(hTaskBar, SW_SHOW);
 			if (TraySave.bMonitorTransparent&&TraySave.bMonitorFloat)
@@ -2043,6 +2043,10 @@ void AdjustWindowPos()//设置信息窗口位置大小
 				
 				//			else
 				//				SetWindowPos(hTaskBar, HWND_TOPMOST, nleft, ntop, mWidth, h, SWP_NOACTIVATE | SWP_NOREDRAW | SWP_SHOWWINDOW);
+			}
+			else if(!IsChild(hTray, hTaskBar) && rovi.dwBuildNumber >= 22000)
+			{
+				SetWindowPos(hTaskBar, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE | SWP_NOSENDCHANGING);
 			}
 			//		else if(hWin11UI)
 			//			SetWindowPos(hTaskBar, HWND_TOPMOST, nleft, ntop, mWidth, h, SWP_NOACTIVATE|SWP_NOREDRAW|SWP_NOSIZE|SWP_NOMOVE|SWP_SHOWWINDOW);
