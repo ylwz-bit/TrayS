@@ -372,3 +372,9 @@ PLAN.md
 *.zip
 *.txt
 !README.md
+
+# Build dependencies (not tracked)
+deps/
+tools/
+vcpkg-tool/
+.claude/
