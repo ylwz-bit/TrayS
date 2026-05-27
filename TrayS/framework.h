@@ -38,26 +38,6 @@
 */
 #include "framework.h"
 #ifndef _DEBUG
-#ifdef _MSC_VER
-#pragma function(memset)
-void* __cdecl memset(void* pTarget, int value, size_t cb) {
-	char* p = (char*)pTarget;
-	while (cb--)*p++ = (char)value;
-	return pTarget;
-}
-#pragma function(memcpy)
-void* __cdecl memcpy(void* pDest, const void* pSrc, size_t cb)
-{
-	void* pResult = pDest;
-	char* bDest = (char*)pDest;
-	char* bSrc = (char*)pSrc;
-	for (size_t i = 0; i < cb; ++i)
-	{
-		*bDest++ = *bSrc++;
-	}
-	return pResult;
-}
-#endif
 #if __cplusplus
 extern "C"
 #endif
