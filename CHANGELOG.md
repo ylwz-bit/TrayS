@@ -1,6 +1,17 @@
-﻿# Changelog
+# Changelog
 
 本文档记录 TrayS 每个版本的主要变更。
+
+## [v1.4.5] - 2026-05-27
+
+### Added
+- 支持 Windows 11 22H2+ 任务栏透明效果（通过 ExplorerTAP.dll 注入 XAML Islands）
+- 新增 Win11Taskbar.h：ITaskbarAppearanceService COM 接口定义 + Win11TaskbarManager 管理类
+- 从 TranslucentTB 源码编译 ExplorerTAP.dll，适配 TrayS 运行环境
+- 支持透明（SolidColor）和亚克力（Acrylic）两种任务栏样式
+
+### Fixed
+- 修复 VS 2026 Insiders CRT 链接兼容性问题（改用静态 CRT /MT）
 
 ## [v1.4.4] - 2026-05-27
 
