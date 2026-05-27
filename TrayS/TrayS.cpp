@@ -4007,6 +4007,26 @@ INT_PTR CALLBACK MainProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 	{
 		KillTimer(hDlg, 6);
 		KillTimer(hDlg, 3);
+		// 恢复任务栏默认样式
+		if (TraySave.bTrayStyle)
+		{
+			SetWindowCompositionAttribute(hTray, ACCENT_DISABLED, 0, (BOOL)hWin11UI);
+			LONG_PTR exStyle = GetWindowLongPtr(hTray, GWL_EXSTYLE);
+			exStyle &= ~WS_EX_LAYERED;
+			SetWindowLongPtr(hTray, GWL_EXSTYLE, exStyle);
+			SetLayeredWindowAttributes(hTray, 0, 255, LWA_ALPHA);
+			// 恢复副屏任务栏
+			HWND hSecTray = FindWindow(szSecondaryTray, NULL);
+			while (hSecTray)
+			{
+				SetWindowCompositionAttribute(hSecTray, ACCENT_DISABLED, 0, (BOOL)hWin11UI);
+				LONG_PTR exS = GetWindowLongPtr(hSecTray, GWL_EXSTYLE);
+				exS &= ~WS_EX_LAYERED;
+				SetWindowLongPtr(hSecTray, GWL_EXSTYLE, exS);
+				SetLayeredWindowAttributes(hSecTray, 0, 255, LWA_ALPHA);
+				hSecTray = FindWindowEx(NULL, hSecTray, szSecondaryTray, NULL);
+			}
+		}
 		SendMessage(hReBarWnd, WM_SETREDRAW, TRUE, 0);
 		HWND hSecondaryTray;
 		hSecondaryTray = FindWindow(szSecondaryTray, NULL);
