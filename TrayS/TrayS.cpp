@@ -2017,7 +2017,7 @@ void AdjustWindowPos()//设置信息窗口位置大小
 			else
 				ntop = (trayrc.bottom - trayrc.top - h) / 2 + trayrc.top;
 			//		if (!hWin11UI)
-			if(!bFullScreen && IsChild(hTray, hTaskBar))
+			if(!bFullScreen && rovi.dwBuildNumber < 22000)
 				ntop -= trayrc.top;
 /*
 			if (hWin11UI)
@@ -2038,7 +2038,7 @@ void AdjustWindowPos()//设置信息窗口位置大小
 				ottop = ntop;
 				//			::InvalidateRect(hTaskBar, NULL, TRUE);
 				//			if (!hWin11UI)
-				if(bFullScreen || !IsChild(hTray, hTaskBar))
+				if(bFullScreen || rovi.dwBuildNumber >= 22000)
 					SetWindowPos(hTaskBar, HWND_TOPMOST, nleft, ntop, mWidth, h, SWP_NOACTIVATE | SWP_SHOWWINDOW);
 				else
 					MoveWindow(hTaskBar, nleft, ntop, mWidth, h, TRUE);
@@ -2046,7 +2046,7 @@ void AdjustWindowPos()//设置信息窗口位置大小
 				//			else
 				//				SetWindowPos(hTaskBar, HWND_TOPMOST, nleft, ntop, mWidth, h, SWP_NOACTIVATE | SWP_NOREDRAW | SWP_SHOWWINDOW);
 			}
-			else if(!IsChild(hTray, hTaskBar) && rovi.dwBuildNumber >= 22000)
+			else if(rovi.dwBuildNumber >= 22000)
 			{
 				SetWindowPos(hTaskBar, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE | SWP_NOSENDCHANGING);
 			}
