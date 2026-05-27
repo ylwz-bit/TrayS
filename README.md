@@ -120,6 +120,22 @@ TrayS.sln
 
 ### 编译 ExplorerTAP.dll
 
+**编译环境：**
+
+| 项目 | 版本 |
+|------|------|
+| Visual Studio | 2022/2026 (v143/v145 工具集) |
+| Windows SDK | 10.0.22621.0 或更高 |
+| CppWinRT | 2.0.250303.1 (NuGet) |
+| Windows SDK CPP | 10.0.26100.7463 (NuGet) |
+| Detours | Mile.Detours 1.0.2180 (NuGet) |
+| WIL | Microsoft.Windows.ImplementationLibrary 1.0.240803.1 (NuGet) |
+| 配置 | Release / x64 |
+| Spectre 缓解 | 禁用 (/p:SpectreMitigation=false) |
+| 签名 | 跳过 (/p:SkipSigning=True) |
+
+**依赖获取：**
+
 ExplorerTAP.dll 需要从 TranslucentTB 源码单独编译：
 
 依赖获取：
@@ -178,4 +194,5 @@ MSBuild.exe TranslucentTB\ExplorerTAP\ExplorerTAP.vcxproj /p:Configuration=Relea
 ## 致谢
 
 - **原作者 [cgbsmy](https://github.com/cgbsmy/TrayS)** - 感谢制作出如此精简优秀的系统监控工具，纯 Win32 API 实现，零依赖、单文件、极低资源占用，是轻量化软件的典范
+- **[TranslucentTB](https://github.com/TranslucentTB/TranslucentTB)** - 提供 ExplorerTAP 注入机制，实现 Windows 11 22H2+ XAML 任务栏透明效果。源码位于 `TranslucentTB/` 目录，`ExplorerTAP.dll` 从源码编译
 - **[PawnIO](https://github.com/A3NP/PawnIO)** - 提供安全轻量的硬件访问驱动，替代存在安全漏洞的 WinRing0
