@@ -398,12 +398,14 @@ void ReadReg()//读取设置
 	if (hFile!= INVALID_HANDLE_VALUE)
 	{
 		DWORD dwFileSize = GetFileSize(hFile, NULL);
-		if (dwFileSize == sizeof(TRAYSAVE))
+		if (dwFileSize > 0 && dwFileSize != 0xFFFFFFFF)
 		{
 			DWORD dwBytes;
 			TRAYSAVE tempSave;
 			EnterCriticalSection(&g_csData);
-			if (ReadFile(hFile, &tempSave, sizeof tempSave, &dwBytes, NULL) && dwBytes == sizeof tempSave)
+			memcpy(&tempSave, &TraySave, sizeof(TRAYSAVE));
+			DWORD dwToRead = min(dwFileSize, (DWORD)sizeof(TRAYSAVE));
+			if (ReadFile(hFile, &tempSave, dwToRead, &dwBytes, NULL) && dwBytes == dwToRead)
 			{
 				memcpy(&TraySave, &tempSave, sizeof(TRAYSAVE));
 			}
