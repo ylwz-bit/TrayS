@@ -1,8 +1,21 @@
-# TrayS
+﻿# TrayS
 
 > 当前版本: v1.4.5 | [更新日志](CHANGELOG.md)
 
 Windows 系统托盘监控工具，在任务栏嵌入实时系统监控面板。
+
+## 下载
+
+> **请务必从官方渠道下载，不要使用来历不明的第三方分发版本。**
+> TrayS 以管理员权限运行，且 Win11 版本会通过 ExplorerTAP.dll 注入 explorer.exe，使用被篡改的程序存在严重安全风险。
+
+| 渠道 | 地址 |
+|------|------|
+| GitHub Releases (官方) | https://github.com/ylwz-bit/TrayS/releases |
+
+**首次使用前请核验：**
+- 确认下载来源为上方官方地址
+- Release 页面的 TrayS.exe 和 ExplorerTAP.dll 均由项目作者发布
 
 ## 功能
 
