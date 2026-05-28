@@ -78,7 +78,7 @@ typedef struct _TRAFFIC
 	ULONG64 out_bytes;
 	ULONG64 in_byte;
 	ULONG64 out_byte;	
-	PWCHAR FriendlyName;
+	WCHAR szFriendlyName[20];
 	PCHAR AdapterName;
 	WCHAR IP4[16];
 }TRAFFIC;

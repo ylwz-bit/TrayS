@@ -294,10 +294,10 @@ void SwitchPDH(BOOL bOn)
 	}
 	else
 	{
-		PdhRemoveCounter(hCounter);
-		PdhRemoveCounter(hDiskRead);
-		PdhRemoveCounter(hDiskWrite);
-		PdhRemoveCounter(hDiskTime);
+		if (hCounter) PdhRemoveCounter(hCounter);
+		if (hDiskRead) PdhRemoveCounter(hDiskRead);
+		if (hDiskWrite) PdhRemoveCounter(hDiskWrite);
+		if (hDiskTime) PdhRemoveCounter(hDiskTime);
 		PdhCloseQuery(hQuery);//关闭查询
 		FreeLibrary(hPDH);
 	}
@@ -1285,15 +1285,8 @@ DWORD WINAPI GetDataThreadProc(PVOID pParam)//获取温度占用硬盘线程
 												//												inet_ntop(PF_INET6, &((sockaddr_in6*)pUnicast->Address.lpSockaddr)->sin6_addr, IP, sizeof(IP));
 												pUnicast = pUnicast->Next;
 											}
-											traffic[l].FriendlyName = paa->FriendlyName;
 											traffic[l].AdapterName = paa->AdapterName;
-											if (lstrlen(paa->FriendlyName) > 19)
-											{
-												paa->FriendlyName[16] = L'.';
-												paa->FriendlyName[17] = L'.';
-												paa->FriendlyName[18] = L'.';
-												paa->FriendlyName[19] = L'\0';
-											}
+											lstrcpynW(traffic[l].szFriendlyName, paa->FriendlyName, ARRAYSIZE(traffic[l].szFriendlyName));
 											if (TraySave.AdpterName[0] == L'\0' || lstrcmpA(paa->AdapterName, TraySave.AdpterName) == 0)
 											{
 												m_in_bytes += mit2->Table[i].InOctets;
@@ -1349,16 +1342,8 @@ DWORD WINAPI GetDataThreadProc(PVOID pParam)//获取温度占用硬盘线程
 												pUnicast = pUnicast->Next;
 											}
 											//							MultiByteToWideChar(CP_ACP, 0, IP, 15, traffic[l].IP4, 15);
-											traffic[l].FriendlyName = paa->FriendlyName;
 											traffic[l].AdapterName = paa->AdapterName;
-											if (lstrlen(paa->FriendlyName) > 19)
-											{
-												paa->FriendlyName[16] = L'.';
-												paa->FriendlyName[17] = L'.';
-												paa->FriendlyName[18] = L'.';
-												paa->FriendlyName[19] = L'\0';
-											}
-											//							wcsncpy_s(traffic[l].FriendlyName, 24, paa->FriendlyName,24);
+											lstrcpynW(traffic[l].szFriendlyName, paa->FriendlyName, ARRAYSIZE(traffic[l].szFriendlyName));
 											if (TraySave.AdpterName[0] == L'\0' || lstrcmpA(paa->AdapterName, TraySave.AdpterName) == 0)
 											{
 												m_in_bytes += mi->table[i].dwInOctets;
@@ -2470,7 +2455,7 @@ INT_PTR CALLBACK TaskTipsProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPa
 				for (int i = 0; i < nTraffic; i++)
 				{
 					rc.left = 5;// +wTipsHeight;
-					DrawText(mdc, traffic[i].FriendlyName, lstrlen(traffic[i].FriendlyName), &rc, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+DrawText(mdc, traffic[i].szFriendlyName, lstrlen(traffic[i].szFriendlyName), &rc, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
 					/*
 									HICON hIcon = GetIconForCSIDL(CSIDL_CONNECTIONS);
 
@@ -3139,11 +3124,11 @@ INT_PTR CALLBACK TimeProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 				binfo.bmiHeader.biCompression = 0;
 				binfo.bmiHeader.biHeight = rc.bottom - rc.top;
 				binfo.bmiHeader.biPlanes = 1;
-				binfo.bmiHeader.biSizeImage = (rc.bottom - rc.top) * (rc.right - rc.left) * 4;
+				binfo.bmiHeader.biSizeImage = (DWORD)(rc.bottom - rc.top) * (DWORD)(rc.right - rc.left) * 4;
 				binfo.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
 				binfo.bmiHeader.biWidth = rc.right - rc.left;
-				lpvBits = (BYTE*)HeapAlloc(GetProcessHeap(), NULL, binfo.bmiHeader.biSizeImage);
-				if (!lpvBits) return FALSE;
+				lpvBits = (BYTE*)HeapAlloc(GetProcessHeap(), 0, binfo.bmiHeader.biSizeImage);
+				if (!lpvBits || binfo.bmiHeader.biSizeImage == 0) return FALSE;
 				//		GetDIBits(mdc, hMemBmp, 0, rc.bottom - rc.top, lpvBits, &bmpInfo, DIB_RGB_COLORS);
 				if (lpvBits)
 				{
@@ -3192,7 +3177,7 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 					{
 						if (n == x)
 						{
-							lstrcpyA(TraySave.AdpterName, paa->AdapterName);
+							lstrcpynA(TraySave.AdpterName, paa->AdapterName, sizeof(TraySave.AdpterName));
 							break;
 						}
 						n++;
@@ -3919,11 +3904,11 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 				binfo.bmiHeader.biCompression = 0;
 				binfo.bmiHeader.biHeight = rc.bottom - rc.top;
 				binfo.bmiHeader.biPlanes = 1;
-				binfo.bmiHeader.biSizeImage = (rc.bottom - rc.top) * (rc.right - rc.left) * 4;
+				binfo.bmiHeader.biSizeImage = (DWORD)(rc.bottom - rc.top) * (DWORD)(rc.right - rc.left) * 4;
 				binfo.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
 				binfo.bmiHeader.biWidth = rc.right - rc.left;
-				lpvBits = (BYTE*)HeapAlloc(GetProcessHeap(), NULL, binfo.bmiHeader.biSizeImage);
-				if (!lpvBits) return FALSE;
+				lpvBits = (BYTE*)HeapAlloc(GetProcessHeap(), 0, binfo.bmiHeader.biSizeImage);
+				if (!lpvBits || binfo.bmiHeader.biSizeImage == 0) return FALSE;
 				//		GetDIBits(mdc, hMemBmp, 0, rc.bottom - rc.top, lpvBits, &bmpInfo, DIB_RGB_COLORS);
 				if (lpvBits)
 				{

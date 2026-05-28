@@ -1,10 +1,11 @@
-﻿#include <windows.h>
+#include <windows.h>
 #include <wchar.h>
 #include <shellapi.h>
 #include <Psapi.h>
 #include <Shlobj.h>
 #include <tlhelp32.h>
 #include <commctrl.h>
+#include <strsafe.h>
 
 //#include "Winhttp.h"
 //#pragma comment(lib,"winhttp.lib")

@@ -1376,10 +1376,10 @@ BOOL OpenProcessPath(DWORD dwProcessId)//??????????ID?????????????
 	sz = &szExplorer[iLen];
 	if (GetProcessFileName(dwProcessId, sz, MAX_PATH))
 	{
-		WCHAR szExe[MAX_PATH * 2];
+		WCHAR szExe[MAX_PATH * 2] = {};
 		GetWindowsDirectory(szExe, MAX_PATH);
-		lstrcat(szExe, L"\\explorer.exe ");
-		lstrcat(szExe, szExplorer);
+		StringCchCatW(szExe, ARRAYSIZE(szExe), L"\\explorer.exe ");
+		StringCchCatW(szExe, ARRAYSIZE(szExe), szExplorer);
 		ret = RunProcess((LPTSTR)1, szExe);
 	}
 	return ret;
