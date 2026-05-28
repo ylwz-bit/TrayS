@@ -121,5 +121,6 @@ UINT_PTR	pSHAppBarMessage(DWORD dwMessage,PAPPBARDATA pData);
 char* xstrstr(const char* str, const char* sub);
 float xatof(const char* s);
 float xwtof(const WCHAR * s);
-BOOL FloatToStr(float f, WCHAR* sz);
+BOOL FloatToStr(float f, WCHAR* sz, size_t bufSize);
 void Win11TaskbarReset();
+
