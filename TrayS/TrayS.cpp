@@ -326,8 +326,9 @@ int GetPDH(BOOL bCPU, BOOL bDisk)
 				iCPU = 99;
 			m_last_rawData = rawData;//保存上一次数据
 		}
-		if (bDisk)
+		if (bDisk && TrayData)
 		{
+			EnterCriticalSection(&g_csData);
 			if (hDiskRead)
 			{
 				PdhGetFormattedCounterValue(hDiskRead, PDH_FMT_DOUBLE, &dwValue, &pdhValue);
@@ -345,6 +346,7 @@ int GetPDH(BOOL bCPU, BOOL bDisk)
 			}
 			if (TrayData->disktime >= 100)
 				TrayData->disktime = 99;
+			LeaveCriticalSection(&g_csData);
 		}
 	}
 	return iCPU;
@@ -1146,12 +1148,13 @@ DWORD WINAPI GetDataThreadProc(PVOID pParam)//获取温度占用硬盘线程
 					}
 				}
 			}
-			if (TraySave.bMonitorTemperature && TrayData)
+		if (TraySave.bMonitorTemperature && TrayData)
+		{
+			// CPU温度 (通过PawnIO)
+			EnterCriticalSection(&g_csData);
+			if (bPawnIoReady)
 			{
-				// CPU温度 (通过PawnIO)
-				if (bPawnIoReady)
-				{
-					TrayData->iTemperature1 = GetCpuTemp(1);
+				TrayData->iTemperature1 = GetCpuTemp(1);
 				}
 				// GPU温度 (通过NvAPI/ADL, 不依赖PawnIO)
 				{
@@ -1187,10 +1190,11 @@ DWORD WINAPI GetDataThreadProc(PVOID pParam)//获取温度占用硬盘线程
 					{
 						// 无独立显卡温度时，用CPU温度作为备选
 						TrayData->iTemperature2 = GetCpuTemp(dNumProcessor);
-					}
 				}
 			}
-			if (TraySave.bMonitorTraffic)
+			LeaveCriticalSection(&g_csData);
+		}
+		if (TraySave.bMonitorTraffic)
 			{
 				if (hIphlpapi == NULL)
 				{
@@ -1367,11 +1371,13 @@ DWORD WINAPI GetDataThreadProc(PVOID pParam)//获取温度占用硬盘线程
 								}
 							}
 						}
-						if (TrayData->m_last_in_bytes != 0)
-						{
-							TrayData->s_in_byte = m_in_bytes - TrayData->m_last_in_bytes;
-							TrayData->s_out_byte = m_out_bytes - TrayData->m_last_out_bytes;
-							/*
+					if (TrayData->m_last_in_bytes != 0)
+					{
+						EnterCriticalSection(&g_csData);
+						TrayData->s_in_byte = m_in_bytes - TrayData->m_last_in_bytes;
+						TrayData->s_out_byte = m_out_bytes - TrayData->m_last_out_bytes;
+						LeaveCriticalSection(&g_csData);
+						/*
 														s_in_bytes[iBytes] = s_in_byte / 1024;
 														s_out_bytes[iBytes] = s_out_byte / 1024;
 														if (iBytes == rNum-1)
@@ -1379,9 +1385,9 @@ DWORD WINAPI GetDataThreadProc(PVOID pParam)//获取温度占用硬盘线程
 														else
 															++iBytes;
 							*/
-						}
-						TrayData->m_last_out_bytes = m_out_bytes;
-						TrayData->m_last_in_bytes = m_in_bytes;
+					}
+					TrayData->m_last_out_bytes = m_out_bytes;
+					TrayData->m_last_in_bytes = m_in_bytes;
 					}
 				}
 			}
@@ -3195,10 +3201,12 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 				}
 			}
 			WriteReg();
+			EnterCriticalSection(&g_csData);
 			TrayData->m_last_in_bytes = 0;
 			TrayData->m_last_out_bytes = 0;
 			TrayData->s_in_byte = 0;
 			TrayData->s_out_byte = 0;
+			LeaveCriticalSection(&g_csData);
 		}
 		else if (LOWORD(wParam) >= IDC_DISK_ALL && LOWORD(wParam) <= IDC_DISK_ALL + 99)
 		{
@@ -3211,9 +3219,11 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 			WriteReg();
 			SwitchPDH(FALSE);
 			SwitchPDH(TRUE);
+			EnterCriticalSection(&g_csData);
 			TrayData->diskreadbyte = 0;
 			TrayData->diskwritebyte = 0;
 			TrayData->disktime = 0;
+			LeaveCriticalSection(&g_csData);
 		}
 		break;
 	case WM_MOUSEMOVE:
@@ -4736,6 +4746,3 @@ void ShowSelectMenu(BOOL bNet)
 	TrackPopupMenu(subMenu, TPM_LEFTALIGN, point.x, point.y, NULL, hTaskBar, NULL);
 	DestroyMenu(hMenu);
 }
-
-
-

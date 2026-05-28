@@ -1,5 +1,6 @@
-﻿#include "PawnIo.h"
+#include "PawnIo.h"
 #include <intrin.h>
+#include <wchar.h>
 
 // min/max (涓嶄緷璧朇RT)
 #ifndef min
@@ -270,7 +271,7 @@ int PawnIo_GetCpuTemp(PIORUNTIME* pRuntime, DWORD Core)
 				tccOffset = (eax1a2 >> 24) & 0x3F; // bits 29:24
 				rawTemp = Tjunction - deltaT - tccOffset * 2;
 #ifdef _DEBUG
-				wsprintfW(dbg, L"[TDBG] Core=%d 0x1A2=%08X TjMax=%d TCC=%d 0x19C=%08X dT=%d temp=%d\n",
+				swprintf_s(dbg, ARRAYSIZE(dbg), L"[TDBG] Core=%d 0x1A2=%08X TjMax=%d TCC=%d 0x19C=%08X dT=%d temp=%d\n",
 					Core, eax1a2, Tjunction, tccOffset, eax, deltaT, rawTemp);
 				OutputDebugStringW(dbg);
 #endif
@@ -279,7 +280,7 @@ int PawnIo_GetCpuTemp(PIORUNTIME* pRuntime, DWORD Core)
 #ifdef _DEBUG
 			else
 			{
-				wsprintfW(dbg, L"[TDBG] 0x19C=%08X bit31=0 INVALID\n", eax);
+				swprintf_s(dbg, ARRAYSIZE(dbg), L"[TDBG] 0x19C=%08X bit31=0 INVALID\n", eax);
 				OutputDebugStringW(dbg);
 			}
 #endif

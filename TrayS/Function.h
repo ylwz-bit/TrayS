@@ -2,8 +2,6 @@
 #include <wchar.h>
 #include <shellapi.h>
 #include <Psapi.h>
-#include <Mmdeviceapi.h>
-#include <audiopolicy.h>
 #include <Shlobj.h>
 #include <tlhelp32.h>
 #include <commctrl.h>

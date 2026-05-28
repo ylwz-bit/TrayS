@@ -1,5 +1,7 @@
-﻿#include "Function.h"
+#include "Function.h"
 #include "Win11Taskbar.h"
+#include <Mmdeviceapi.h>
+#include <audiopolicy.h>
 ////////////////////////////////////////////////////??????????????
 HRESULT pSHLoadIndirectString(LPCWSTR pszSource, LPWSTR pszOutBuf, UINT cchOutBuf, void** ppvReserved)
 {
@@ -21,7 +23,7 @@ UINT  pDragQueryFile(HDROP hDrop, UINT iFile, LPTSTR lpszFile, UINT cch)
 {
 	UINT ret = NULL;
 	typedef UINT(WINAPI* pfnDragQueryFile)(HDROP hDrop, UINT iFile, LPTSTR lpszFile, UINT cch);
-	HMODULE hShell32 = LoadLibrary(L"shell32.dll");
+	HMODULE hShell32 = GetModuleHandle(L"shell32.dll");
 	if (hShell32)
 	{
 		pfnDragQueryFile pDragQueryFileW = (pfnDragQueryFile)GetProcAddress(hShell32, "DragQueryFileW");
@@ -29,7 +31,6 @@ UINT  pDragQueryFile(HDROP hDrop, UINT iFile, LPTSTR lpszFile, UINT cch)
 		{
 			ret = pDragQueryFileW(hDrop, iFile, lpszFile, cch);
 		}
-		FreeLibrary(hShell32);
 	}
 	return ret;
 }
@@ -38,7 +39,7 @@ HICON  pExtractIcon(HINSTANCE hInst, LPCTSTR lpszExeFileName, UINT nIconIndex)
 	//IExtractIcon
 	HICON ret = NULL;
 	typedef HICON(WINAPI* pfnExtractIcon)(HINSTANCE hInst, LPCTSTR lpszExeFileName, UINT nIconIndex);
-	HMODULE hShell32 = LoadLibrary(L"shell32.dll");
+	HMODULE hShell32 = GetModuleHandle(L"shell32.dll");
 	if (hShell32)
 	{
 		pfnExtractIcon pExtractIconW = (pfnExtractIcon)GetProcAddress(hShell32, "ExtractIconW");
@@ -46,7 +47,6 @@ HICON  pExtractIcon(HINSTANCE hInst, LPCTSTR lpszExeFileName, UINT nIconIndex)
 		{
 			ret = pExtractIconW(hInst, lpszExeFileName, nIconIndex);
 		}
-		FreeLibrary(hShell32);
 	}
 	return ret;
 }
@@ -55,16 +55,14 @@ DWORD pSHGetFileInfo(LPCTSTR pszPath, DWORD dwFileAttributes, SHFILEINFO FAR* ps
 	//IExtractIcon
 	DWORD ret = NULL;
 	typedef DWORD(WINAPI* pfnSHGetFileInfo)(LPCTSTR pszPath, DWORD dwFileAttributes, SHFILEINFO FAR* psfi, UINT cbFileInfo, UINT uFlags);
-	HMODULE hShell32 = LoadLibrary(L"shell32.dll");
+	HMODULE hShell32 = GetModuleHandle(L"shell32.dll");
 	if (hShell32)
 	{
 		pfnSHGetFileInfo pSHGetFileInfoW = (pfnSHGetFileInfo)GetProcAddress(hShell32, "SHGetFileInfoW");
 		if (pSHGetFileInfoW)
 		{
 			ret = pSHGetFileInfoW(pszPath, dwFileAttributes, psfi, cbFileInfo, uFlags);
-
 		}
-		FreeLibrary(hShell32);
 	}
 	return ret;
 }
@@ -73,7 +71,7 @@ HRESULT  pSHDefExtractIcon(LPCWSTR pszIconFile,int iIndex,UINT uFlags,HICON* phi
 	//IExtractIcon
 	HRESULT ret = NULL;
 	typedef HRESULT(WINAPI* pfnSHDefExtractIcon)(LPCWSTR pszIconFile, int iIndex, UINT uFlags, HICON* phiconLarge, HICON* phiconSmall, UINT nIconSize);
-	HMODULE hShell32 = LoadLibrary(L"shell32.dll");
+	HMODULE hShell32 = GetModuleHandle(L"shell32.dll");
 	if (hShell32)
 	{
 		pfnSHDefExtractIcon SHDefExtractIconW = (pfnSHDefExtractIcon)GetProcAddress(hShell32, "SHDefExtractIconW");
@@ -81,7 +79,6 @@ HRESULT  pSHDefExtractIcon(LPCWSTR pszIconFile,int iIndex,UINT uFlags,HICON* phi
 		{
 			ret = SHDefExtractIconW(pszIconFile, iIndex, uFlags, phiconLarge, phiconSmall, nIconSize);
 		}
-		FreeLibrary(hShell32);
 	}
 	return ret;
 }
@@ -89,27 +86,25 @@ HINSTANCE pShellExecute(_In_opt_ HWND hwnd, _In_opt_ LPCWSTR lpOperation, _In_ L
 {
 	HINSTANCE hInstance = NULL;
 	typedef HINSTANCE(WINAPI* pfnShellExecute)(_In_opt_ HWND hwnd, _In_opt_ LPCWSTR lpOperation, _In_ LPCWSTR lpFile, _In_opt_ LPCWSTR lpParameters, _In_opt_ LPCWSTR lpDirectory, _In_ INT nShowCmd);
-	HMODULE hShell32 = LoadLibrary(L"shell32.dll");
+	HMODULE hShell32 = GetModuleHandle(L"shell32.dll");
 	if (hShell32)
 	{
 		pfnShellExecute pShellExecuteW = (pfnShellExecute)GetProcAddress(hShell32, "ShellExecuteW");
 		if (pShellExecuteW)
 			hInstance = pShellExecuteW(hwnd, lpOperation, lpFile, lpParameters, lpDirectory, nShowCmd);
-		FreeLibrary(hShell32);
 	}
 	return hInstance;
 }
 BOOL pShell_NotifyIcon(DWORD dwMessage, _In_ PNOTIFYICONDATAW lpData)
 {
 	typedef BOOL(WINAPI* pfnShell_NotifyIcon)(DWORD dwMessage, _In_ PNOTIFYICONDATAW lpData);
-	HMODULE hShell32 = LoadLibrary(L"shell32.dll");
+	HMODULE hShell32 = GetModuleHandle(L"shell32.dll");
 	BOOL ret = FALSE;
 	if (hShell32)
 	{
 		pfnShell_NotifyIcon pShell_NotifyIconW = (pfnShell_NotifyIcon)GetProcAddress(hShell32, "Shell_NotifyIconW");
 		if (pShell_NotifyIconW)
 			ret = pShell_NotifyIconW(dwMessage, lpData);
-		FreeLibrary(hShell32);
 	}
 	return ret;
 }
@@ -631,8 +626,12 @@ BOOL GetSetVolume(BOOL bSet, HWND hWnd, DWORD dwProcessId, float* fVolume, BOOL*
 	const IID IID_IAudioSessionControl2 = __uuidof(IAudioSessionControl2);
 
 	GUID m_guidMyContext;
-	CoInitialize(NULL);
+	HRESULT hrCo = CoInitialize(NULL);
 	hr = CoCreateGuid(&m_guidMyContext);
+	if (FAILED(hrCo) && hrCo != RPC_E_CHANGED_MODE)
+	{
+		return FALSE;
+	}
 	if (CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void**)&m_pEnumerator) == S_OK)
 	{
 		if (IsMixer)
@@ -1466,13 +1465,12 @@ UINT_PTR	pSHAppBarMessage(DWORD dwMessage, PAPPBARDATA pData)
 {
 	UINT_PTR ret=FALSE;
 	typedef UINT_PTR(WINAPI* pfnSHAppBarMessage)(DWORD dwMessage, PAPPBARDATA pData);
-	HMODULE hDll = LoadLibrary(L"shell32.dll");
+	HMODULE hDll = GetModuleHandle(L"shell32.dll");
 	if (hDll)
 	{
 		pfnSHAppBarMessage sHAppBarMessage = (pfnSHAppBarMessage)GetProcAddress(hDll, "SHAppBarMessage");
 		if (sHAppBarMessage)
 			ret = sHAppBarMessage(dwMessage, pData);
-		FreeLibrary(hDll);
 	}
 	return ret;
 }
