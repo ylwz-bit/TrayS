@@ -100,6 +100,22 @@ public:
 	BOOL IsAvailable() const { return m_pService != nullptr; }
 	BOOL HasFailed() const { return m_bFailed; }
 
+	// Reset state when explorer restarts - release stale COM connection
+	void Reset()
+	{
+		if (m_pService)
+		{
+			m_pService->Release();
+			m_pService = nullptr;
+		}
+		if (m_hTAPDll)
+		{
+			FreeLibrary(m_hTAPDll);
+			m_hTAPDll = nullptr;
+		}
+		m_bFailed = FALSE;
+	}
+
 	~Win11TaskbarManager()
 	{
 		if (m_pService)

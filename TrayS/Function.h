@@ -1,4 +1,4 @@
-#include <windows.h>
+﻿#include <windows.h>
 #include <wchar.h>
 #include <shellapi.h>
 #include <Psapi.h>
@@ -122,3 +122,4 @@ char* xstrstr(const char* str, const char* sub);
 float xatof(const char* s);
 float xwtof(const WCHAR * s);
 BOOL FloatToStr(float f, WCHAR* sz);
+void Win11TaskbarReset();

@@ -3946,6 +3946,10 @@ INT_PTR CALLBACK MainProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 	{
 		if (TraySave.bTrayIcon)
 			pShell_NotifyIcon(NIM_ADD, &nid);
+		// Explorer restarted - reset Win11 TAP connection and re-find taskbar windows
+		if (hWin11UI)
+			Win11TaskbarReset();
+		GetShellAllWnd();
 		return (INT_PTR)TRUE;
 	}
 	switch (message)

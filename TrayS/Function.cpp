@@ -1033,6 +1033,10 @@ BOOL SetWindowCompositionAttribute(HWND hWnd, ACCENT_STATE mode, DWORD AlphaColo
 	}
 	return ret;
 }
+void Win11TaskbarReset()
+{
+	Win11TaskbarManager::Instance().Reset();
+}
 /*
 typedef BOOL(WINAPI*pfnGetWindowCompositionAttribute)(HWND, struct _WINDOWCOMPOSITIONATTRIBDATA*);
 BOOL GetWindowCompositionAttribute(HWND hWnd, ACCENT_POLICY * accent)
