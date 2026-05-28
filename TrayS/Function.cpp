@@ -1,4 +1,4 @@
-#include "Function.h"
+﻿#include "Function.h"
 #include "Win11Taskbar.h"
 ////////////////////////////////////////////////////??????????????
 HRESULT pSHLoadIndirectString(LPCWSTR pszSource, LPWSTR pszOutBuf, UINT cchOutBuf, void** ppvReserved)
@@ -818,7 +818,7 @@ void SetTaskScheduler(BOOL bDelAdd, const WCHAR* szName)////////////////////////
 {
 	SetToCurrentPath();
 	WCHAR szDelSchtasks[MAX_PATH];
-	wsprintf(szDelSchtasks, L" s/Delete /TN %s /F", szName);
+	swprintf_s(szDelSchtasks, ARRAYSIZE(szDelSchtasks), L" s/Delete /TN %s /F", szName);
 	RunProcess(NULL, szDelSchtasks);
 	Sleep(300);
 	if (bDelAdd)
@@ -831,10 +831,10 @@ void SetTaskScheduler(BOOL bDelAdd, const WCHAR* szName)////////////////////////
 		//		LoadString(hInst, IDS_XML1, szXML, 2048);
 		if (IsUserAdmin())
 		{
-			wsprintf(sXML, szXML1, szName, L" ", L"<RunLevel>HighestAvailable</RunLevel><GroupId>Builtin\\Administrators</GroupId>");
+			swprintf_s(sXML, ARRAYSIZE(sXML), szXML1, szName, L" ", L"<RunLevel>HighestAvailable</RunLevel><GroupId>Builtin\\Administrators</GroupId>");
 			//			LoadString(hInst, IDS_XML2, szXML, 2048);
 			int iLen = lstrlen(sXML);
-			wsprintf(&sXML[iLen], szXML2, szExe);
+			swprintf_s(&sXML[iLen], ARRAYSIZE(sXML)-iLen, szXML2, szExe);
 		}
 		else
 		{
@@ -842,16 +842,16 @@ void SetTaskScheduler(BOOL bDelAdd, const WCHAR* szName)////////////////////////
 			DWORD dwLen = 64;
 			GetUserName(szUserName, &dwLen);
 			WCHAR szID[64];
-			wsprintf(szID, L"<UserId>%s</UserId>", szUserName);
+			swprintf_s(szID, ARRAYSIZE(szID), L"<UserId>%s</UserId>", szUserName);
 			WCHAR szUserID[128];
-			wsprintf(szUserID, L"<UserId>%s</UserId><LogonType>InteractiveToken</LogonType>", szUserName);
-			wsprintf(sXML, szXML1, szName, szID, szUserID);
+			swprintf_s(szUserID, ARRAYSIZE(szUserID), L"<UserId>%s</UserId><LogonType>InteractiveToken</LogonType>", szUserName);
+			swprintf_s(sXML, ARRAYSIZE(sXML), szXML1, szName, szID, szUserID);
 			//			LoadString(hInst, IDS_XML2, szXML, 2048);
 			int iLen = lstrlen(sXML);
-			wsprintf(&sXML[iLen], szXML2, szExe);
+			swprintf_s(&sXML[iLen], ARRAYSIZE(sXML)-iLen, szXML2, szExe);
 		}
 		WCHAR szFileName[64];
-		wsprintf(szFileName, L"%s.xml", szName);
+		swprintf_s(szFileName, ARRAYSIZE(szFileName), L"%s.xml", szName);
 		HANDLE hFile = CreateFile(szFileName, GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_ARCHIVE, NULL);
 		if (hFile != INVALID_HANDLE_VALUE)
 		{
@@ -862,7 +862,7 @@ void SetTaskScheduler(BOOL bDelAdd, const WCHAR* szName)////////////////////////
 			CloseHandle(hFile);
 		}
 		WCHAR szCreateSchtasks[MAX_PATH];
-		wsprintf(szCreateSchtasks, L" s/create /XML %s.xml /tn %s", szName, szName);
+		swprintf_s(szCreateSchtasks, ARRAYSIZE(szCreateSchtasks), L" s/create /XML %s.xml /tn %s", szName, szName);
 		//		WCHAR szRunSchtasks[] = L" s/Run /TN TaryS";
 		RunProcess(NULL, szCreateSchtasks);
 		//		RunProcess(szRunSchtasks);
@@ -1188,7 +1188,7 @@ HICON GetUWPAppIcon(HWND hWnd, UINT uiIconSize = 32)////////////////////////////
 						//						WCHAR* sz_ = wcsstr(szPackageName, L"_");
 						//						if(sz_)
 						//							wcsncpy_s(szName, MAX_PATH, szPackageName, sz_ - szPackageName);
-						wsprintf(szLogoPath, L"@{%s?ms-resource://%s/Files/%s}", szPackageName, ((PACKAGE_ID*)byPackageId)->name, &szY[1]);
+						swprintf_s(szLogoPath, ARRAYSIZE(szLogoPath), L"@{%s?ms-resource://%s/Files/%s}", szPackageName, ((PACKAGE_ID*)byPackageId)->name, &szY[1]);
 						for (int ii = 0, length = lstrlen(szLogoPath); ii < length; ii++)
 							if (szLogoPath[ii] == '\\')szLogoPath[ii] = '/';
 						pSHLoadIndirectString(szLogoPath, szLogoPath, MAX_PATH, 0);
@@ -1602,44 +1602,44 @@ float xwtof(const WCHAR* s)
 	}
 	return n * v;
 }
-BOOL FloatToStr(float f, WCHAR* sz)
+BOOL FloatToStr(float f, WCHAR* sz, size_t bufSize)
 {
 	if(f>1000000)
-		wsprintf(sz, L"%d",(int)f);
+		swprintf_s(sz, bufSize, L"%d",(int)f);
 	else if (f > 100000)
 	{
 		int x = (int)(f * 10);
-		wsprintf(sz, L"%d.%.1d", x / 10, x % 10);
+		swprintf_s(sz, bufSize, L"%d.%.1d", x / 10, x % 10);
 	}
 	else if (f > 10000)
 	{
 		int x = (int)(f * 100);
-		wsprintf(sz, L"%d.%.2d", x / 100, x % 100);
+		swprintf_s(sz, bufSize, L"%d.%.2d", x / 100, x % 100);
 	}
 	else if (f > 1000)
 	{
 		int x = (int)(f * 1000);
-		wsprintf(sz, L"%d.%.3d", x / 1000, x % 1000);
+		swprintf_s(sz, bufSize, L"%d.%.3d", x / 1000, x % 1000);
 	}
 	else if (f > 100)
 	{
 		int x = (int)(f * 10000);
-		wsprintf(sz, L"%d.%.4d", x / 10000, x % 10000);
+		swprintf_s(sz, bufSize, L"%d.%.4d", x / 10000, x % 10000);
 	}
 	else if (f > 10)
 	{
 		int x = (int)(f * 100000);
-		wsprintf(sz, L"%d.%.5d", x / 100000, x % 100000);
+		swprintf_s(sz, bufSize, L"%d.%.5d", x / 100000, x % 100000);
 	}
 	else if (f > 1)
 	{
 		int x = (int)(f * 1000000);
-		wsprintf(sz, L"%d.%.6d", x / 1000000, x % 1000000);
+		swprintf_s(sz, bufSize, L"%d.%.6d", x / 1000000, x % 1000000);
 	}
 	else
 	{
 		int x = (int)(f * 10000000);
-		wsprintf(sz, L"%d.%.7d", x / 10000000, x % 10000000);
+		swprintf_s(sz, bufSize, L"%d.%.7d", x / 10000000, x % 10000000);
 	}
 	return TRUE;
 }
@@ -1655,3 +1655,5 @@ void EmptyProcessMemory(DWORD pID)
 	SetProcessWorkingSetSize(hProcess, -1, -1);
 	EmptyWorkingSet(hProcess);
 }
+
+

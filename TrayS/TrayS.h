@@ -502,5 +502,6 @@ void LoadTemperatureDLL();//加载DLL
 void SetWH();//计算监控窗口高宽
 int GetProcessMemUsage();//获取内存使用大小
 void GetProcessCpuUsage();//获取进程CPU使用率
-void GetTrafficStr(WCHAR* sz, ULONG64 uByte, BOOL bBit,int iUnit=0);//流量转字符串
+void GetTrafficStr(WCHAR* sz, size_t bufSize, ULONG64 uByte, BOOL bBit, int iUnit=0);//流量转字符串
 void ShowSelectMenu(BOOL bNet);//显示网卡/硬盘菜单
+

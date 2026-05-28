@@ -168,3 +168,5 @@ private:
 	ITaskbarAppearanceService* m_pService = nullptr;
 	BOOL m_bFailed = FALSE;
 };
+
+
