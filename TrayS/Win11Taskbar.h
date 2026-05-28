@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 // Win11 Taskbar Appearance Provider - integration with ExplorerTAP.dll
 // Uses TranslucentTB's injection mechanism to achieve taskbar transparency on Win11 22H2+
 
@@ -56,47 +56,17 @@ public:
 		if (m_bFailed)
 			return FALSE;
 
-		// Load ExplorerTAP.dll from the same directory as TrayS.exe
-		if (!m_hTAPDll)
+		__try
 		{
-			WCHAR szPath[MAX_PATH] = {};
-			GetModuleFileName(NULL, szPath, MAX_PATH);
-			WCHAR* pSlash = NULL; for (WCHAR* p = szPath; *p; p++) { if (*p == L'\\') pSlash = p; }
-			if (pSlash)
-			{
-				wcscpy_s(pSlash + 1, MAX_PATH - (pSlash + 1 - szPath), L"ExplorerTAP.dll");
-				m_hTAPDll = LoadLibrary(szPath);
-			}
-			if (!m_hTAPDll)
-			{
-				m_hTAPDll = LoadLibrary(L"ExplorerTAP.dll");
-			}
-			if (!m_hTAPDll)
-			{
-				m_bFailed = TRUE;
-				return FALSE;
-			}
+			return InitializeInternal(hTaskbar);
 		}
-
-		PFN_INJECT_EXPLORER_TAP pfnInject = (PFN_INJECT_EXPLORER_TAP)GetProcAddress(m_hTAPDll, "InjectExplorerTAP");
-		if (!pfnInject)
+		__except (EXCEPTION_EXECUTE_HANDLER)
 		{
 			m_bFailed = TRUE;
+			if (m_pService) { m_pService->Release(); m_pService = nullptr; }
+			if (m_hTAPDll) { FreeLibrary(m_hTAPDll); m_hTAPDll = nullptr; }
 			return FALSE;
 		}
-
-		IUnknown* pUnk = nullptr;
-		HRESULT hr = pfnInject(hTaskbar, IID_ITaskbarAppearanceService, (LPVOID*)&pUnk);
-		if (SUCCEEDED(hr) && pUnk)
-		{
-			pUnk->QueryInterface(IID_ITaskbarAppearanceService, (LPVOID*)&m_pService);
-			pUnk->Release();
-			if (m_pService)
-				return TRUE;
-		}
-
-		m_bFailed = TRUE;
-		return FALSE;
 	}
 
 	// Set taskbar to transparent
@@ -148,6 +118,51 @@ private:
 	Win11TaskbarManager() = default;
 	Win11TaskbarManager(const Win11TaskbarManager&) = delete;
 	Win11TaskbarManager& operator=(const Win11TaskbarManager&) = delete;
+
+	BOOL InitializeInternal(HWND hTaskbar)
+	{
+		// Load ExplorerTAP.dll from the same directory as TrayS.exe
+		if (!m_hTAPDll)
+		{
+			WCHAR szPath[MAX_PATH] = {};
+			GetModuleFileName(NULL, szPath, MAX_PATH);
+			WCHAR* pSlash = NULL; for (WCHAR* p = szPath; *p; p++) { if (*p == L'\\') pSlash = p; }
+			if (pSlash)
+			{
+				wcscpy_s(pSlash + 1, MAX_PATH - (pSlash + 1 - szPath), L"ExplorerTAP.dll");
+				m_hTAPDll = LoadLibrary(szPath);
+			}
+			if (!m_hTAPDll)
+			{
+				m_hTAPDll = LoadLibrary(L"ExplorerTAP.dll");
+			}
+			if (!m_hTAPDll)
+			{
+				m_bFailed = TRUE;
+				return FALSE;
+			}
+		}
+
+		PFN_INJECT_EXPLORER_TAP pfnInject = (PFN_INJECT_EXPLORER_TAP)GetProcAddress(m_hTAPDll, "InjectExplorerTAP");
+		if (!pfnInject)
+		{
+			m_bFailed = TRUE;
+			return FALSE;
+		}
+
+		IUnknown* pUnk = nullptr;
+		HRESULT hr = pfnInject(hTaskbar, IID_ITaskbarAppearanceService, (LPVOID*)&pUnk);
+		if (SUCCEEDED(hr) && pUnk)
+		{
+			pUnk->QueryInterface(IID_ITaskbarAppearanceService, (LPVOID*)&m_pService);
+			pUnk->Release();
+			if (m_pService)
+				return TRUE;
+		}
+
+		m_bFailed = TRUE;
+		return FALSE;
+	}
 
 	HMODULE m_hTAPDll = nullptr;
 	ITaskbarAppearanceService* m_pService = nullptr;

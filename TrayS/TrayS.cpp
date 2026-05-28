@@ -775,11 +775,11 @@ void OpenSetting()
 	SetForegroundWindow(hSetting);
 }
 
-#ifndef _DEBUG
-extern "C" void WinMainCRTStartup()
-{
-	LPWSTR lpCmdLine;
-#else
+// #ifndef _DEBUG - removed custom WinMainCRTStartup, use standard wWinMain
+// extern "C" void WinMainCRTStartup()
+// {
+// 	LPWSTR lpCmdLine;
+// #else
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nCmdShow) {
 	UNREFERENCED_PARAMETER(hPrevInstance);
 	UNREFERENCED_PARAMETER(lpCmdLine);
@@ -842,7 +842,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		ServiceCtrlStop();
 	}
 */
-#endif
+// #endif - was end of _DEBUG guard
 #ifdef NDEBUG
 	if (OpenFileMapping(FILE_MAP_ALL_ACCESS, FALSE, szAppName) == NULL)/////////////////////////创建守护进程
 	{
@@ -850,7 +850,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 			if (hMap)
 			{
 				TrayData = (TRAYDATA*)MapViewOfFile(hMap, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(TRAYDATA));
-				if (!TrayData) { CloseHandle(hMap); return; }
+			if (!TrayData) { CloseHandle(hMap); return 0; }
 				ZeroMemory(TrayData, sizeof(TRAYDATA));
 				int iReset = 6;
 				while (TrayData->bExit == FALSE && iReset != 0)
@@ -865,7 +865,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 				UnmapViewOfFile(TrayData);
 				CloseHandle(hMap);
 				ExitProcess(0);
-				return;
+			return 0;
 			}
 	}
 #endif
@@ -874,8 +874,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 	{
 		TrayData = (TRAYDATA*)MapViewOfFile(hMap, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(TRAYDATA));
 	}
-#ifdef NDEBUG
-#else
+// #ifdef NDEBUG - removed, always create file mapping if needed
 	else
 	{
 		hMap = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, sizeof(TRAYDATA), szAppName);
@@ -884,7 +883,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		if (TrayData)
 			ZeroMemory(TrayData, sizeof(TRAYDATA));
 	}
-#endif // !DAEMON
+// #endif
+// #endif // !DAEMON
 	pChangeWindowMessageFilter(WM_TRAYS, MSGFLT_ADD);
 	pChangeWindowMessageFilter(WM_DROPFILES, MSGFLT_ADD);
 	pChangeWindowMessageFilter(0x0049, MSGFLT_ADD);
@@ -1026,12 +1026,12 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 			// 执行应用程序初始化:
 			if (!InitInstance(hInst, 0))
 			{
-#ifndef _DEBUG
-				ExitProcess(0);
-#else
 				return 0;
-#endif
 			}
+// removed #ifndef _DEBUG / ExitProcess / #else / return / #endif
+
+
+
 			MSG msg;
 			// 主消息循环:
 			while (GetMessage(&msg, nullptr, 0, 0))
