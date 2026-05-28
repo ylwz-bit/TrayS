@@ -1507,18 +1507,18 @@ BOOL Find(IAccessible* paccParent, int iRole, IAccessible** paccChild)//查找�
 			varChild.vt = VT_I4;
 			varChild.lVal = CHILDID_SELF;
 			*paccChild = pChild;
-		}
-		VARIANT varState;
-		pChild->get_accState(varChild, &varState);
-		if ((varState.intVal & STATE_SYSTEM_INVISIBLE) == 0)
-		{
-			VARIANT varRole;
-			pChild->get_accRole(varChild, &varRole);
-			if (varRole.lVal == iRole)
+			VARIANT varState;
+			pChild->get_accState(varChild, &varState);
+			if ((varState.intVal & STATE_SYSTEM_INVISIBLE) == 0)
 			{
-				paccParent->Release();
-				found = true;
-				break;
+				VARIANT varRole;
+				pChild->get_accRole(varChild, &varRole);
+				if (varRole.lVal == iRole)
+				{
+					paccParent->Release();
+					found = true;
+					break;
+				}
 			}
 		}
 		if (!found && pChild)

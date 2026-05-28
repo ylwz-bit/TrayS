@@ -1644,14 +1644,21 @@ BOOL FloatToStr(float f, WCHAR* sz, size_t bufSize)
 void EmptyProcessMemory(DWORD pID)
 {
 	HANDLE hProcess;
-	if(pID==NULL)
+	BOOL bNeedClose = FALSE;
+	if (pID == NULL)
 		hProcess = GetCurrentProcess();
 	else
 	{
-		hProcess = OpenProcess(PROCESS_ALL_ACCESS, TRUE, pID);
+		hProcess = OpenProcess(PROCESS_SET_QUOTA | PROCESS_QUERY_INFORMATION, FALSE, pID);
+		bNeedClose = TRUE;
 	}
-	SetProcessWorkingSetSize(hProcess, -1, -1);
-	EmptyWorkingSet(hProcess);
+	if (hProcess)
+	{
+		SetProcessWorkingSetSize(hProcess, -1, -1);
+		EmptyWorkingSet(hProcess);
+		if (bNeedClose)
+			CloseHandle(hProcess);
+	}
 }
 
 
