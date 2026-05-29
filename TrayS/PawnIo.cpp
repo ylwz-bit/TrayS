@@ -241,8 +241,7 @@ int PawnIo_GetCpuTemp(PIORUNTIME* pRuntime, DWORD Core)
 		Tjunction = 100;
 
 		// MSR 0x1A2: IA32_TEMPERATURE_TARGET
-		// TjMax 鍦?bits 23:16 (Intel SDM)
-		// TCC Activation Offset 鍦?bits 29:24
+		// TjMax is in bits 23:16
 		eax1a2 = edx1a2 = 0;
 		if (PawnIo_ReadMsr(pRuntime, 0x1A2, &eax1a2, &edx1a2))
 		{
@@ -264,15 +263,13 @@ int PawnIo_GetCpuTemp(PIORUNTIME* pRuntime, DWORD Core)
 		{
 			if (eax & 0x80000000) // Digital Readout Valid
 			{
-				int tccOffset;
 				int rawTemp;
 
 				deltaT = (eax & 0x007F0000) >> 16;
-				tccOffset = (eax1a2 >> 24) & 0x3F; // bits 29:24
-				rawTemp = Tjunction - deltaT - tccOffset * 2;
+				rawTemp = Tjunction - deltaT;
 #ifdef _DEBUG
-				swprintf_s(dbg, ARRAYSIZE(dbg), L"[TDBG] Core=%d 0x1A2=%08X TjMax=%d TCC=%d 0x19C=%08X dT=%d temp=%d\n",
-					Core, eax1a2, Tjunction, tccOffset, eax, deltaT, rawTemp);
+				swprintf_s(dbg, ARRAYSIZE(dbg), L"[TDBG] Core=%d 0x1A2=%08X TjMax=%d 0x19C=%08X dT=%d temp=%d\n",
+					Core, eax1a2, Tjunction, eax, deltaT, rawTemp);
 				OutputDebugStringW(dbg);
 #endif
 				return rawTemp;
@@ -295,31 +292,61 @@ int PawnIo_GetCpuTemp(PIORUNTIME* pRuntime, DWORD Core)
 	else
 	{
 		int cpuInfo[4] = {};
-		int family, temp;
-		BOOL tempOffsetFlag;
+		int family, model, temp;
 		DWORD smnValue;
 
-		// AMD: 妫€娴媐amily
+		// AMD: detect exact family and model
 		__cpuid(cpuInfo, 1);
 		family = ((cpuInfo[0] >> 20) & 0xFF) + ((cpuInfo[0] >> 8) & 0xF);
+		model = ((cpuInfo[0] >> 4) & 0xF) | ((cpuInfo[0] >> 12) & 0xF0);
 
 		if (family >= 0x17)
 		{
-			// AMD Family 17h+ (Zen绯诲垪): 閫氳繃SMN璇诲彇娓╁害
-			// SMN 0x00059800: THM_TCON_CUR_TMP
+			// AMD Family 17h+ (Zen): read via SMN 0x00059800
 			smnValue = 0;
 			if (PawnIo_ReadSmn(pRuntime, 0x00059800, &smnValue))
 			{
-				// bits 31:21: 娓╁害鍊?(1/128 掳C)
+				// bits[31:21]: temperature in 1/128 degC units (7-bit integer)
 				temp = (int)((smnValue >> 21) & 0x7F);
 
-				// 妫€鏌ユ槸鍚﹂渶瑕?-49 鍋忕Щ (鏌愪簺 Ryzen 鏃у瀷鍙?
-				// RANGE_SEL (bit 19) 鎴?TJ_SEL (bits 17:16 閮戒负1)
-				tempOffsetFlag = ((smnValue & 0x80000) != 0) ||
-				                      ((smnValue & 0x30000) == 0x30000);
-				if (tempOffsetFlag)
-					temp -= 49;
+				// Model-specific Tctl -> Tdie offset correction
+				// Reference: Linux k10temp.c, AMD PPR
+				int tctlOffset = 0;
 
+				if (family == 0x17)
+				{
+					if (model <= 0x04)
+						tctlOffset = 20;  // Zen 1 (Summit Ridge/EPYC Naples)
+					else if (model >= 0x08 && model <= 0x0F)
+						tctlOffset = 10;  // Zen+ (Pinnacle Ridge)
+					else if (model >= 0x10 && model <= 0x1F)
+						tctlOffset = 10;  // Zen (Raven Ridge APU)
+					else if (model >= 0x20 && model <= 0x2F)
+						tctlOffset = 10;  // Zen (Picasso APU)
+					// Zen 2/3 on Family 17h: no offset
+				}
+				else if (family == 0x19)
+				{
+					// Zen 3/4 (Family 19h): no Tctl offset
+					tctlOffset = 0;
+				}
+				else if (family == 0x1A)
+				{
+					// Zen 5 (Family 1Ah): no Tctl offset
+					tctlOffset = 0;
+				}
+
+				temp -= tctlOffset;
+
+#ifdef _DEBUG
+				{
+					WCHAR dbg[256];
+					swprintf_s(dbg, ARRAYSIZE(dbg),
+						L"[TDBG-AMD] Family%02Xh Model=%02Xh SMN=0x%08X raw=%d offset=%d temp=%d\n",
+						family, model, smnValue, (int)((smnValue >> 21) & 0x7F), tctlOffset, temp);
+					OutputDebugStringW(dbg);
+				}
+#endif
 				return temp;
 			}
 		}
@@ -331,12 +358,30 @@ int PawnIo_GetCpuTemp(PIORUNTIME* pRuntime, DWORD Core)
 			if (PawnIo_Execute(pRuntime->hDevice, "ioctl_read_miscctl", input2, 2, output2, 1))
 			{
 				DWORD miscReg = (DWORD)(output2[0] & 0xFFFFFFFF);
+#ifdef _DEBUG
+			{
+				WCHAR dbg[256];
+				swprintf_s(dbg, ARRAYSIZE(dbg),
+					L"[TDBG-AMD] Family10h MiscCtl=0x%08X temp=%d\n",
+					miscReg, (int)(miscReg >> 21));
+				OutputDebugStringW(dbg);
+			}
+#endif
 				return (int)(miscReg >> 21);
 			}
 			// 澶囬€? MSR 0xE8
 			eax = edx = 0;
 			if (PawnIo_ReadMsr(pRuntime, 0x000000E8, &eax, &edx))
 			{
+#ifdef _DEBUG
+			{
+				WCHAR dbg[128];
+				swprintf_s(dbg, ARRAYSIZE(dbg),
+					L"[TDBG-AMD] Family10h MSR 0xE8=0x%08X temp=%d\n",
+					eax, (int)((eax >> 21) & 0x7F));
+				OutputDebugStringW(dbg);
+			}
+#endif
 				return (int)((eax >> 21) & 0x7F);
 			}
 		}
@@ -348,6 +393,15 @@ int PawnIo_GetCpuTemp(PIORUNTIME* pRuntime, DWORD Core)
 			if (PawnIo_Execute(pRuntime->hDevice, "ioctl_get_thermtrip", input2, 2, output2, 1))
 			{
 				DWORD miscReg = (DWORD)(output2[0] & 0xFFFFFFFF);
+#ifdef _DEBUG
+			{
+				WCHAR dbg[128];
+				swprintf_s(dbg, ARRAYSIZE(dbg),
+					L"[TDBG-AMD] Family0Fh thermtrip=0x%08X temp=%d\n",
+					miscReg, (int)((miscReg >> 16) & 0x7F) - 49);
+				OutputDebugStringW(dbg);
+			}
+#endif
 				return (int)((miscReg >> 16) & 0x7F) - 49;
 			}
 		}
@@ -356,3 +410,72 @@ int PawnIo_GetCpuTemp(PIORUNTIME* pRuntime, DWORD Core)
 	return 0;
 }
 
+// 获取所有核心中最高的CPU温度
+int PawnIo_GetCpuTempMax(PIORUNTIME* pRuntime)
+{
+	if (!pRuntime || !pRuntime->bLoaded)
+		return 0;
+
+	int maxTemp = 0;
+	SYSTEM_INFO si;
+	GetSystemInfo(&si);
+	DWORD numProc = si.dwNumberOfProcessors;
+	if (numProc == 0) numProc = 1;
+	if (numProc > 64) numProc = 64;
+
+	// Save current affinity
+	DWORD_PTR oldMask = SetThreadAffinityMask(GetCurrentThread(), (DWORD_PTR)-1);
+
+	for (DWORD i = 0; i < numProc; i++)
+	{
+		int t = PawnIo_GetCpuTemp(pRuntime, i);
+		if (t > maxTemp)
+			maxTemp = t;
+	}
+
+	// Restore affinity
+	SetThreadAffinityMask(GetCurrentThread(), oldMask);
+
+	return maxTemp;
+}
+
+// 获取CPU Package温度 (Intel: MSR 0x1B1)
+int PawnIo_GetPackageTemp(PIORUNTIME* pRuntime)
+{
+	if (!pRuntime || !pRuntime->bLoaded)
+		return 0;
+
+	if (pRuntime->bIntel)
+	{
+		DWORD eax = 0, edx = 0;
+		int Tjunction = 100;
+
+		// First get TjMax from MSR 0x1A2
+		if (PawnIo_ReadMsr(pRuntime, 0x1A2, &eax, &edx))
+		{
+			int tjMax = (eax >> 16) & 0xFF;
+			if (tjMax > 0 && tjMax <= 150)
+				Tjunction = tjMax;
+		}
+
+		// MSR 0x1B1: IA32_PACKAGE_THERM_STATUS
+		// bit 31: Valid
+		// bits 22:16: Digital Readout (distance from TjMax)
+		eax = edx = 0;
+		if (PawnIo_ReadMsr(pRuntime, 0x1B1, &eax, &edx))
+		{
+			if (eax & 0x80000000)
+			{
+				int deltaT = (eax & 0x007F0000) >> 16;
+				return Tjunction - deltaT;
+			}
+		}
+	}
+	else
+	{
+		// AMD: Package temp is same as core temp for Zen
+		return PawnIo_GetCpuTemp(pRuntime, 0);
+	}
+
+	return 0;
+}

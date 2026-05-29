@@ -8,6 +8,7 @@
 
 #include "framework.h"
 #include "TrayS.h"
+#include <intrin.h>
 COLORREF oPixelColor;
 HDC hDesktopDC=NULL;
 int DPI(int pixel)
@@ -554,7 +555,8 @@ int GetCpuTemp(DWORD Core)
 {
 	if (bPawnIoReady)
 	{
-		return PawnIo_GetCpuTemp(&g_PawnIo, Core);
+		// 读取所有核心取最高温度 (与OHM行为一致)
+		return PawnIo_GetCpuTempMax(&g_PawnIo);
 	}
 	return 0;
 }
@@ -570,6 +572,15 @@ void LoadTemperatureDLL()
 	{
 		bPawnIoReady = FALSE;
 	}
+#ifdef _DEBUG
+	{
+		WCHAR dbg[256];
+		swprintf_s(dbg, ARRAYSIZE(dbg),
+			L"[TEMP-INIT] PawnIO installed=%d ready=%d Intel=%d device=%p\n",
+			PawnIo_IsInstalled(), bPawnIoReady, g_PawnIo.bIntel, g_PawnIo.hDevice);
+		OutputDebugStringW(dbg);
+	}
+#endif
 #ifdef _WIN64
 	hNVDLL = LoadLibrary(L"nvapi64.dll");
 #else
@@ -593,25 +604,52 @@ void LoadTemperatureDLL()
 					}
 					int physicalGpuCount;
 					NvAPI_EnumPhysicalGPUs(hPhysicalGpu, &physicalGpuCount);
+#ifdef _DEBUG
+					{
+						WCHAR dbg[256];
+						swprintf_s(dbg, ARRAYSIZE(dbg),
+							L"[TEMP-INIT] NvAPI OK, GPU count=%d, handle[0]=%p handle[1]=%p\n",
+							physicalGpuCount, (void*)(intptr_t)hPhysicalGpu[0], (void*)(intptr_t)hPhysicalGpu[1]);
+						OutputDebugStringW(dbg);
+					}
+#endif
 				}
 				else
 				{
 					FreeLibrary(hNVDLL);
+#ifdef _DEBUG
+					OutputDebugStringW(L"[TEMP-INIT] NvAPI_Initialize FAILED\n");
+#endif
 					hNVDLL = NULL;
 				}
 			}
 			else
 			{
 				FreeLibrary(hNVDLL);
+#ifdef _DEBUG
+				OutputDebugStringW(L"[TEMP-INIT] NvAPI GetProcAddress FAILED\n");
+#endif
 				hNVDLL = NULL;
 			}
 		}
 		else
 		{
 			FreeLibrary(hNVDLL);
+#ifdef _DEBUG
+			OutputDebugStringW(L"[TEMP-INIT] NvAPI nvapi_QueryInterface FAILED\n");
+#endif
 			hNVDLL = NULL;
 		}
 	}
+#ifdef _DEBUG
+	if (!hNVDLL)
+	{
+		WCHAR dbg[128];
+		swprintf_s(dbg, ARRAYSIZE(dbg),
+			L"[TEMP-INIT] nvapi64.dll load/init FAILED, err=%d\n", GetLastError());
+		OutputDebugStringW(dbg);
+	}
+#endif
 #ifdef _WIN64
 	hATIDLL = LoadLibrary(L"atiadlxx.dll");
 #else
@@ -627,15 +665,71 @@ void LoadTemperatureDLL()
 			if (ADL_OK != ADL_Main_Control_Create(ADL_Main_Memory_Alloc, 1))
 			{
 				FreeLibrary(hATIDLL);
+#ifdef _DEBUG
+				OutputDebugStringW(L"[TEMP-INIT] ADL_Main_Control_Create FAILED\n");
+#endif
 				hATIDLL = NULL;
 			}
+#ifdef _DEBUG
+			else
+			{
+				OutputDebugStringW(L"[TEMP-INIT] ADL OK\n");
+			}
+#endif
 		}
 		else
 		{
 			FreeLibrary(hATIDLL);
+#ifdef _DEBUG
+			OutputDebugStringW(L"[TEMP-INIT] ADL GetProcAddress FAILED\n");
+#endif
 			hATIDLL = NULL;
 		}
 	}
+#ifdef _DEBUG
+	else
+	{
+		WCHAR dbg[128];
+		swprintf_s(dbg, ARRAYSIZE(dbg),
+			L"[TEMP-INIT] atiadlxx.dll load/init FAILED, err=%d\n", GetLastError());
+		OutputDebugStringW(dbg);
+	}
+#endif
+#ifdef _DEBUG
+	{
+		// CPU model
+		int cpuInfo[4] = {};
+		char cpuBrand[64] = {};
+		__cpuid(cpuInfo, 0x80000002);
+		memcpy(cpuBrand, cpuInfo, 16);
+		__cpuid(cpuInfo, 0x80000003);
+		memcpy(cpuBrand + 16, cpuInfo, 16);
+		__cpuid(cpuInfo, 0x80000004);
+		memcpy(cpuBrand + 32, cpuInfo, 16);
+		WCHAR wBrand[64] = {};
+		MultiByteToWideChar(CP_ACP, 0, cpuBrand, -1, wBrand, 64);
+		OutputDebugStringW(L"[SYS-INFO] CPU: ");
+		OutputDebugStringW(wBrand);
+		OutputDebugStringW(L"\n");
+
+		// CPU cores
+		WCHAR dbg[128];
+		swprintf_s(dbg, ARRAYSIZE(dbg),
+			L"[SYS-INFO] Processors=%d, PawnIO Intel=%d\n",
+			dNumProcessor, g_PawnIo.bIntel);
+		OutputDebugStringW(dbg);
+
+		// OS version
+		swprintf_s(dbg, ARRAYSIZE(dbg),
+			L"[SYS-INFO] OS Build=%d.%d.%d\n",
+			rovi.dwMajorVersion, rovi.dwMinorVersion, rovi.dwBuildNumber);
+		OutputDebugStringW(dbg);
+
+		// GPU DLLs
+		OutputDebugStringW(hNVDLL ? L"[SYS-INFO] nvapi64.dll: loaded\n" : L"[SYS-INFO] nvapi64.dll: NOT loaded\n");
+		OutputDebugStringW(hATIDLL ? L"[SYS-INFO] atiadlxx.dll: loaded\n" : L"[SYS-INFO] atiadlxx.dll: NOT loaded\n");
+	}
+#endif
 }
 ///////////////////////////////////释放温度DLL
 void FreeTemperatureDLL()
@@ -1155,6 +1249,16 @@ DWORD WINAPI GetDataThreadProc(PVOID pParam)//获取温度占用硬盘线程
 			if (bPawnIoReady)
 			{
 				TrayData->iTemperature1 = GetCpuTemp(1);
+#ifdef _DEBUG
+			{
+				int pkgTemp = PawnIo_GetPackageTemp(&g_PawnIo);
+				WCHAR dbg[256];
+				swprintf_s(dbg, ARRAYSIZE(dbg),
+					L"[TEMP-CPU] MaxCore=%d Package=%d bPawnIoReady=%d\n",
+					TrayData->iTemperature1, pkgTemp, bPawnIoReady);
+				OutputDebugStringW(dbg);
+			}
+#endif
 				}
 				// GPU温度 (通过NvAPI/ADL, 不依赖PawnIO)
 				{
@@ -1169,6 +1273,18 @@ DWORD WINAPI GetDataThreadProc(PVOID pParam)//获取温度占用硬盘线程
 							if (NvAPI_GPU_GetThermalSettings(hPhysicalGpu[GpuIndex], 15, &currentTemp) == 0)
 							{
 								iNVTemperature = currentTemp.sensor[0].currentTemp;
+#ifdef _DEBUG
+							{
+								WCHAR dbg[256];
+								swprintf_s(dbg, ARRAYSIZE(dbg),
+									L"[TEMP-GPU] NvAPI GPU[%d] handle=%p ctrl=%d temp=%d target=%d\n",
+									GpuIndex, (void*)(intptr_t)hPhysicalGpu[GpuIndex],
+									currentTemp.sensor[0].controller,
+									currentTemp.sensor[0].currentTemp,
+									currentTemp.sensor[0].target);
+								OutputDebugStringW(dbg);
+							}
+#endif
 								break;
 							}
 						}
@@ -1178,6 +1294,15 @@ DWORD WINAPI GetDataThreadProc(PVOID pParam)//获取温度占用硬盘线程
 						adlTemperature.iSize = sizeof(ADLTemperature);
 						ADL_Overdrive5_Temperature_Get(0, 0, &adlTemperature);
 						iATITemperature = adlTemperature.iTemperature / 1000;
+#ifdef _DEBUG
+					{
+						WCHAR dbg[256];
+						swprintf_s(dbg, ARRAYSIZE(dbg),
+							L"[TEMP-GPU] ADL raw=%d (x1000), result=%d\n",
+							adlTemperature.iTemperature, iATITemperature);
+						OutputDebugStringW(dbg);
+					}
+#endif
 					}
 					if (iATITemperature != 0 || iNVTemperature != 0)
 					{
@@ -1185,11 +1310,29 @@ DWORD WINAPI GetDataThreadProc(PVOID pParam)//获取温度占用硬盘线程
 							TrayData->iTemperature2 = iATITemperature;
 						else
 							TrayData->iTemperature2 = iNVTemperature;
+#ifdef _DEBUG
+					{
+						WCHAR dbg[256];
+						swprintf_s(dbg, ARRAYSIZE(dbg),
+							L"[TEMP-GPU] final: NV=%d ATI=%d -> Temperature2=%d\n",
+							iNVTemperature, iATITemperature, TrayData->iTemperature2);
+						OutputDebugStringW(dbg);
+					}
+#endif
 					}
 					else if (bPawnIoReady)
 					{
-						// 无独立显卡温度时，用CPU温度作为备选
-						TrayData->iTemperature2 = GetCpuTemp(dNumProcessor);
+						// 无独显温度时，用Package温度兜底 (与OHM的fCpuPackge一致)
+						TrayData->iTemperature2 = PawnIo_GetPackageTemp(&g_PawnIo);
+#ifdef _DEBUG
+					{
+						WCHAR dbg[128];
+						swprintf_s(dbg, ARRAYSIZE(dbg),
+							L"[TEMP-GPU] fallback: no GPU temp, Package=%d\n",
+							TrayData->iTemperature2);
+						OutputDebugStringW(dbg);
+					}
+#endif
 				}
 			}
 			LeaveCriticalSection(&g_csData);
