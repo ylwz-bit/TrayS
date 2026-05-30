@@ -320,6 +320,19 @@ HMODULE hOHMA = NULL;
 typedef void(WINAPI* pfnGetTemperature)(float* fCpu, float* fGpu, float* fMain, float* fHdd, int iHdd, float* fCpuPackge);
 pfnGetTemperature GetTemperature = NULL;
 
+// Intel IGCL (Intel Graphics Command Library) 直接读取核显温度
+HMODULE hIGCL = NULL;
+static void* g_igclAPI = NULL;
+static void* g_igclDevice = NULL;
+typedef int (*pfnCtlInit)(void*, void**);
+typedef int (*pfnCtlClose)(void*);
+typedef int (*pfnCtlEnumDevices)(void*, unsigned int*, void**);
+typedef int (*pfnCtlGetTemperature)(void*, int, double*);
+pfnCtlInit CtlInit = NULL;
+pfnCtlClose CtlClose = NULL;
+pfnCtlEnumDevices CtlEnumDevices = NULL;
+pfnCtlGetTemperature CtlGetTemperature = NULL;
+
 ////////////////////////////////////////磁盘空间缓存 (后台线程更新，避免在WM_ERASEBKGND中做磁盘I/O)
 typedef struct _DISKCACHE {
 	WCHAR Drive[4];      // "C:\"
