@@ -1,4 +1,4 @@
-ï»¿// TrayS.cpp : å®šä¹‰åº”ç”¨ç¨‹åºçš„å…¥å£ç‚¹ã€‚
+// TrayS.cpp : ¶¨ÒåÓ¦ÓÃ³ÌĞòµÄÈë¿Úµã¡£
 //
 #ifdef _WIN64
 #pragma comment(linker,"/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='amd64' publicKeyToken='6595b64144ccf1df' language='*'\"")
@@ -23,7 +23,7 @@ COLORREF GetWindowPixel(HWND hWnd)
 	COLORREF c = GetPixel(hDesktopDC, rc.left+1, rc.top+=(rc.bottom-rc.top)/2);
 	return c;
 }
-BOOL CALLBACK FindSettingWindowFunc(HWND hWnd, LPARAM lpAram)///////////æŸ¥æ‰¾TraySä¸»çª—å£é˜²æ­¢é‡å¤å¼€å¯
+BOOL CALLBACK FindSettingWindowFunc(HWND hWnd, LPARAM lpAram)///////////²éÕÒTraySÖ÷´°¿Ú·ÀÖ¹ÖØ¸´¿ªÆô
 {
 	WCHAR szText[16];
 	GetWindowText(hWnd, szText, 16);
@@ -35,7 +35,7 @@ BOOL CALLBACK FindSettingWindowFunc(HWND hWnd, LPARAM lpAram)///////////æŸ¥æ‰¾Tr
 	}
 	return TRUE;
 }
-BOOL CALLBACK IsZoomedFunc(HWND hWnd, LPARAM lpAram)////æ˜¯å¦æœ‰æœ€å¤§åŒ–çª—å£
+BOOL CALLBACK IsZoomedFunc(HWND hWnd, LPARAM lpAram)////ÊÇ·ñÓĞ×î´ó»¯´°¿Ú
 {
 	if (::IsWindowVisible(hWnd) && IsZoomed(hWnd))
 	{
@@ -64,7 +64,7 @@ BOOL CreateProcessByExplorer(LPCWSTR process, LPCWSTR szDir, LPCWSTR cmd)
 	{
 		HWND hTrayWnd = ::FindWindow(szShellTray, NULL);
 		DWORD explorerPid;
-		GetWindowThreadProcessId(hTrayWnd, &explorerPid);// è·å–explorerè¿›ç¨‹å·ï¼Œè‡ªè¡Œå®ç°
+		GetWindowThreadProcessId(hTrayWnd, &explorerPid);// »ñÈ¡explorer½ø³ÌºÅ£¬×ÔĞĞÊµÏÖ
 
 		if (explorerPid == NULL)
 			break;
@@ -122,7 +122,7 @@ typedef struct _STORAGE_DEVICE_NUMBER {
 	DWORD       DeviceNumber;
 	DWORD       PartitionNumber;
 } STORAGE_DEVICE_NUMBER, * PSTORAGE_DEVICE_NUMBER;
-DWORD GetPhysicalDriveFromPartitionLetter(WCHAR letter)//é€šè¿‡ç›˜ç¬¦è·å–ç‰©ç†ç¡¬ç›˜ä½ç½®
+DWORD GetPhysicalDriveFromPartitionLetter(WCHAR letter)//Í¨¹ıÅÌ·û»ñÈ¡ÎïÀíÓ²ÅÌÎ»ÖÃ
 {
 	HANDLE hDevice;
 	DWORD readed;
@@ -143,7 +143,7 @@ DWORD GetPhysicalDriveFromPartitionLetter(WCHAR letter)//é€šè¿‡ç›˜ç¬¦è·å–ç‰©ç
 }
 
 DWORD iCPU;
-/////////////////////////////////////////////////////////////////////////////CPUå ç”¨ç‡
+/////////////////////////////////////////////////////////////////////////////CPUÕ¼ÓÃÂÊ
 FILETIME pre_idleTime;
 FILETIME pre_kernelTime;
 FILETIME pre_userTime;
@@ -288,7 +288,7 @@ void SwitchPDH(BOOL bOn)
 					}
 					return;
 				}
-				PdhCloseQuery(hQuery);//å…³é—­æŸ¥è¯¢
+				PdhCloseQuery(hQuery);//¹Ø±Õ²éÑ¯
 			}
 			FreeLibrary(hPDH);
 		}
@@ -299,7 +299,7 @@ void SwitchPDH(BOOL bOn)
 		if (hDiskRead) PdhRemoveCounter(hDiskRead);
 		if (hDiskWrite) PdhRemoveCounter(hDiskWrite);
 		if (hDiskTime) PdhRemoveCounter(hDiskTime);
-		PdhCloseQuery(hQuery);//å…³é—­æŸ¥è¯¢
+		PdhCloseQuery(hQuery);//¹Ø±Õ²éÑ¯
 		FreeLibrary(hPDH);
 	}
 	hPDH = NULL;
@@ -317,15 +317,15 @@ int GetPDH(BOOL bCPU, BOOL bDisk)
 			/*
 					PdhGetRawCounterValue(hCounter, &counterType, &rawData);
 					PDH_FMT_COUNTERVALUE fmtValue;
-					PdhCalculateCounterFromRawValue(hCounter, PDH_FMT_DOUBLE, &rawData, &m_last_rawData, &fmtValue);//è®¡ç®—ä½¿ç”¨ç‡
-					iCPU = (int)fmtValue.doubleValue;//ä¼ å‡ºæ•°æ®
+					PdhCalculateCounterFromRawValue(hCounter, PDH_FMT_DOUBLE, &rawData, &m_last_rawData, &fmtValue);//¼ÆËãÊ¹ÓÃÂÊ
+					iCPU = (int)fmtValue.doubleValue;//´«³öÊı¾İ
 			*/
 			if (hCounter)
 				PdhGetFormattedCounterValue(hCounter, PDH_FMT_LONG, &dwValue, &pdhValue);			
 			iCPU = pdhValue.longValue;
 			if (iCPU >= 100)
 				iCPU = 99;
-			m_last_rawData = rawData;//ä¿å­˜ä¸Šä¸€æ¬¡æ•°æ®
+			m_last_rawData = rawData;//±£´æÉÏÒ»´ÎÊı¾İ
 		}
 		if (bDisk && TrayData)
 		{
@@ -365,9 +365,9 @@ int GetCPUUseRate()
 			SwitchPDH(FALSE);
 		}
 		int nCPUUseRate = -1;
-		FILETIME idleTime;//ç©ºé—²æ—¶é—´ 
-		FILETIME kernelTime;//æ ¸å¿ƒæ€æ—¶é—´ 
-		FILETIME userTime;//ç”¨æˆ·æ€æ—¶é—´ 
+		FILETIME idleTime;//¿ÕÏĞÊ±¼ä 
+		FILETIME kernelTime;//ºËĞÄÌ¬Ê±¼ä 
+		FILETIME userTime;//ÓÃ»§Ì¬Ê±¼ä 
 		GetSystemTimes(&idleTime, &kernelTime, &userTime);
 
 		__int64 idle = CompareFileTime(pre_idleTime, idleTime);
@@ -385,7 +385,7 @@ int GetCPUUseRate()
 		return nCPUUseRate;
 	}
 }
-void ReadReg()//è¯»å–è®¾ç½®
+void ReadReg()//¶ÁÈ¡ÉèÖÃ
 {
 
 	if (rovi.dwBuildNumber >= 22000)
@@ -417,7 +417,7 @@ void ReadReg()//è¯»å–è®¾ç½®
 		CloseHandle(hFile);
 	}
 }
-void WriteReg()//å†™å…¥è®¾ç½®
+void WriteReg()//Ğ´ÈëÉèÖÃ
 {
 	SetToCurrentPath();
 	HANDLE hFile = CreateFile(szTraySave, GENERIC_WRITE, FILE_SHARE_READ, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_ARCHIVE, NULL);
@@ -548,22 +548,22 @@ void OpenTaskBar()
 		}
 	}
 }
-////////////////////////////////////////////è·å–CPUæ¸©åº¦
+////////////////////////////////////////////»ñÈ¡CPUÎÂ¶È
 WCHAR oldDisk=L'\0';
 int nDisk = -1;
 int GetCpuTemp(DWORD Core)
 {
 	if (bPawnIoReady)
 	{
-		// è¯»å–æ‰€æœ‰æ ¸å¿ƒå–æœ€é«˜æ¸©åº¦ (ä¸OHMè¡Œä¸ºä¸€è‡´)
+		// ¶ÁÈ¡ËùÓĞºËĞÄÈ¡×î¸ßÎÂ¶È (ÓëOHMĞĞÎªÒ»ÖÂ)
 		return PawnIo_GetCpuTempMax(&g_PawnIo);
 	}
 	return 0;
 }
-//////////////////////////////////////////////////è½½å…¥æ¸©åº¦DLL
+//////////////////////////////////////////////////ÔØÈëÎÂ¶ÈDLL
 void LoadTemperatureDLL()
 {
-	// åˆå§‹åŒ–PawnIO (æ›¿ä»£WinRing0 + OpenHardwareMonitorApi)
+	// ³õÊ¼»¯PawnIO (Ìæ´úWinRing0 + OpenHardwareMonitorApi)
 	if (PawnIo_IsInstalled())
 	{
 		bPawnIoReady = PawnIo_Init(&g_PawnIo);
@@ -731,7 +731,7 @@ void LoadTemperatureDLL()
 	}
 #endif
 }
-///////////////////////////////////é‡Šæ”¾æ¸©åº¦DLL
+///////////////////////////////////ÊÍ·ÅÎÂ¶ÈDLL
 void FreeTemperatureDLL()
 {
 	if (hATIDLL)
@@ -748,7 +748,7 @@ void FreeTemperatureDLL()
 	PawnIo_Free(&g_PawnIo);
 	bPawnIoReady = FALSE;
 }
-///////////////////////////////////////////////æ‰“å¼€è¯»å–è®¾ç½®
+///////////////////////////////////////////////´ò¿ª¶ÁÈ¡ÉèÖÃ
 void OpenSetting()
 {
 	if (IsWindow(hSetting))
@@ -881,17 +881,17 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 	UNREFERENCED_PARAMETER(lpCmdLine);
 
 /*
-	if (lpCmdLine[0] == L'c')////æ‰“å¼€æ§åˆ¶é¢æ¿
+	if (lpCmdLine[0] == L'c')////´ò¿ª¿ØÖÆÃæ°å
 	{
 		pShellExecute(NULL, L"open", L"control.exe", &lpCmdLine[1], NULL, SW_SHOW);
 		return 0;
 	}
-	else if (lpCmdLine[0] == L'o')//ç”¨SHELLEXECUTEæ‰“å¼€
+	else if (lpCmdLine[0] == L'o')//ÓÃSHELLEXECUTE´ò¿ª
 	{
 		pShellExecute(NULL, L"open", &lpCmdLine[1], NULL, NULL, SW_SHOW);
 		return 0;
 	}
-	else if (lpCmdLine[0] == L's')//æ‰“å¼€ä»»åŠ¡è®¡åˆ’
+	else if (lpCmdLine[0] == L's')//´ò¿ªÈÎÎñ¼Æ»®
 	{
 		pShellExecute(NULL, L"open", L"schtasks", &lpCmdLine[1], NULL, SW_HIDE);
 		return 0;
@@ -940,7 +940,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 */
 // #endif - was end of _DEBUG guard
 #ifdef NDEBUG
-	if (OpenFileMapping(FILE_MAP_ALL_ACCESS, FALSE, szAppName) == NULL)/////////////////////////åˆ›å»ºå®ˆæŠ¤è¿›ç¨‹
+	if (OpenFileMapping(FILE_MAP_ALL_ACCESS, FALSE, szAppName) == NULL)/////////////////////////´´½¨ÊØ»¤½ø³Ì
 	{
 			HANDLE hMap = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, sizeof(TRAYDATA), szAppName);
 			if (hMap)
@@ -1017,22 +1017,22 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 			break;
 		}
 	}
-	if (lpCmdLine[0] == L'c')////æ‰“å¼€æ§åˆ¶é¢æ¿
+	if (lpCmdLine[0] == L'c')////´ò¿ª¿ØÖÆÃæ°å
 	{
 		pShellExecute(NULL, L"open", L"control.exe", &lpCmdLine[1], NULL, SW_SHOW);
 		ExitProcess(0);
 	}
-	else if (lpCmdLine[0] == L'o')//ç”¨SHELLEXECUTEæ‰“å¼€
+	else if (lpCmdLine[0] == L'o')//ÓÃSHELLEXECUTE´ò¿ª
 	{
 		pShellExecute(NULL, L"open", &lpCmdLine[1], lpParameters, NULL, SW_SHOW);
 		ExitProcess(0);
 	}
-	else if (lpCmdLine[0] == L's')//æ‰“å¼€ä»»åŠ¡è®¡åˆ’
+	else if (lpCmdLine[0] == L's')//´ò¿ªÈÎÎñ¼Æ»®
 	{
 		pShellExecute(NULL, L"open", L"schtasks", &lpCmdLine[1], NULL, SW_HIDE);
 		ExitProcess(0);
 	}
-	if (IsUserAdmin()==3)//////////////////////////////////////////////////ä»¥SYSYTEMæƒé™å¯åŠ¨
+	if (IsUserAdmin()==3)//////////////////////////////////////////////////ÒÔSYSYTEMÈ¨ÏŞÆô¶¯
 	{
 //		lpServiceName = (LPWSTR)szAppName;
 		InitService();
@@ -1074,7 +1074,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		ServiceCtrlStop();
 	}
 	GetShellAllWnd();
-	hInst = GetModuleHandle(NULL); // å°†å®ä¾‹å¥æŸ„å­˜å‚¨åœ¨å…¨å±€å˜é‡ä¸­
+	hInst = GetModuleHandle(NULL); // ½«ÊµÀı¾ä±ú´æ´¢ÔÚÈ«¾Ö±äÁ¿ÖĞ
 	typedef WINUSERAPI DWORD WINAPI RTLGETVERSION(PRTL_OSVERSIONINFOW  lpVersionInformation);
 	rovi.dwOSVersionInfoSize = sizeof(rovi);
 	RTLGETVERSION* RtlGetVersion = (RTLGETVERSION*)GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "RtlGetVersion");
@@ -1119,7 +1119,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 			ppcu[5] = &pcu[5];
 //			g_hHeapWindowInfo = HeapCreate(NULL, 0, 0);			
 // 
-			// æ‰§è¡Œåº”ç”¨ç¨‹åºåˆå§‹åŒ–:
+			// Ö´ĞĞÓ¦ÓÃ³ÌĞò³õÊ¼»¯:
 			if (!InitInstance(hInst, 0))
 			{
 				return 0;
@@ -1129,7 +1129,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 
 
 			MSG msg;
-			// ä¸»æ¶ˆæ¯å¾ªç¯:
+			// Ö÷ÏûÏ¢Ñ­»·:
 			while (GetMessage(&msg, nullptr, 0, 0))
 			{
 				if (!IsDialogMessage(hMain, &msg) && !IsDialogMessage(hSetting, &msg))
@@ -1183,8 +1183,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 }
 DWORD dwIPSize = 0;
 DWORD dwMISize = 0;
-int iGetAddressTime = 10;//10ç§’ä¸€æ¬¡è·å–ç½‘å¡ä¿¡æ¯
-DWORD WINAPI GetDataThreadProc(PVOID pParam)//è·å–æ¸©åº¦å ç”¨ç¡¬ç›˜çº¿ç¨‹
+int iGetAddressTime = 10;//10ÃëÒ»´Î»ñÈ¡Íø¿¨ĞÅÏ¢
+DWORD WINAPI GetDataThreadProc(PVOID pParam)//»ñÈ¡ÎÂ¶ÈÕ¼ÓÃÓ²ÅÌÏß³Ì
 {	
 	while (!bRealClose)
 	{
@@ -1217,7 +1217,7 @@ DWORD WINAPI GetDataThreadProc(PVOID pParam)//è·å–æ¸©åº¦å ç”¨ç¡¬ç›˜çº¿ç¨‹
 				HeapFree(GetProcessHeap(), 0, pProcessTime);
 				pProcessTime = NULL;
 			}
-			// æ›´æ–°ç£ç›˜ç©ºé—´ç¼“å­˜
+			// ¸üĞÂ´ÅÅÌ¿Õ¼ä»º´æ
 			{
 				WCHAR wDrive[MAX_PATH];
 				DWORD dwLen = GetLogicalDriveStrings(MAX_PATH, wDrive);
@@ -1244,7 +1244,7 @@ DWORD WINAPI GetDataThreadProc(PVOID pParam)//è·å–æ¸©åº¦å ç”¨ç¡¬ç›˜çº¿ç¨‹
 			}
 		if (TraySave.bMonitorTemperature && TrayData)
 		{
-			// CPUæ¸©åº¦ (é€šè¿‡PawnIO)
+			// CPUÎÂ¶È (Í¨¹ıPawnIO)
 			EnterCriticalSection(&g_csData);
 			if (bPawnIoReady)
 			{
@@ -1260,7 +1260,7 @@ DWORD WINAPI GetDataThreadProc(PVOID pParam)//è·å–æ¸©åº¦å ç”¨ç¡¬ç›˜çº¿ç¨‹
 			}
 #endif
 				}
-				// GPUæ¸©åº¦ (é€šè¿‡NvAPI/ADL, ä¸ä¾èµ–PawnIO)
+				// GPUÎÂ¶È (Í¨¹ıNvAPI/ADL, ²»ÒÀÀµPawnIO)
 				{
 					int iATITemperature = 0;
 					int iNVTemperature = 0;
@@ -1322,7 +1322,7 @@ DWORD WINAPI GetDataThreadProc(PVOID pParam)//è·å–æ¸©åº¦å ç”¨ç¡¬ç›˜çº¿ç¨‹
 					}
 					else if (bPawnIoReady)
 					{
-						// æ— ç‹¬æ˜¾æ¸©åº¦æ—¶ï¼Œç”¨Packageæ¸©åº¦å…œåº• (ä¸OHMçš„fCpuPackgeä¸€è‡´)
+						// ÎŞ¶ÀÏÔÎÂ¶ÈÊ±£¬ÓÃPackageÎÂ¶È¶µµ× (ÓëOHMµÄfCpuPackgeÒ»ÖÂ)
 						TrayData->iTemperature2 = PawnIo_GetPackageTemp(&g_PawnIo);
 #ifdef _DEBUG
 					{
@@ -1417,14 +1417,14 @@ DWORD WINAPI GetDataThreadProc(PVOID pParam)//è·å–æ¸©åº¦å ç”¨ç¡¬ç›˜çº¿ç¨‹
 											PIP_ADAPTER_UNICAST_ADDRESS pUnicast = paa->FirstUnicastAddress;
 											while (pUnicast)
 											{
-												if (AF_INET == pUnicast->Address.lpSockaddr->sa_family)// IPV4 åœ°å€ï¼Œä½¿ç”¨ IPV4 è½¬æ¢
+												if (AF_INET == pUnicast->Address.lpSockaddr->sa_family)// IPV4 µØÖ·£¬Ê¹ÓÃ IPV4 ×ª»»
 												{
 													void* pAddr = &((sockaddr_in*)pUnicast->Address.lpSockaddr)->sin_addr;
 													byte* bp = (byte*)pAddr;
 													swprintf_s(traffic[l].IP4, ARRAYSIZE(traffic[l].IP4), L"%d.%d.%d.%d", bp[0], bp[1], bp[2], bp[3]);
 													break;
 												}
-												//											else if (AF_INET6 == pUnicast->Address.lpSockaddr->sa_family)// IPV6 åœ°å€ï¼Œä½¿ç”¨ IPV6 è½¬æ¢
+												//											else if (AF_INET6 == pUnicast->Address.lpSockaddr->sa_family)// IPV6 µØÖ·£¬Ê¹ÓÃ IPV6 ×ª»»
 												//												inet_ntop(PF_INET6, &((sockaddr_in6*)pUnicast->Address.lpSockaddr)->sin6_addr, IP, sizeof(IP));
 												pUnicast = pUnicast->Next;
 											}
@@ -1473,14 +1473,14 @@ DWORD WINAPI GetDataThreadProc(PVOID pParam)//è·å–æ¸©åº¦å ç”¨ç¡¬ç›˜çº¿ç¨‹
 											//							char IP[130];
 											while (pUnicast)
 											{
-												if (AF_INET == pUnicast->Address.lpSockaddr->sa_family)// IPV4 åœ°å€ï¼Œä½¿ç”¨ IPV4 è½¬æ¢
+												if (AF_INET == pUnicast->Address.lpSockaddr->sa_family)// IPV4 µØÖ·£¬Ê¹ÓÃ IPV4 ×ª»»
 												{
 													void* pAddr = &((sockaddr_in*)pUnicast->Address.lpSockaddr)->sin_addr;
 													byte* bp = (byte*)pAddr;
 													swprintf_s(traffic[l].IP4, ARRAYSIZE(traffic[l].IP4), L"%d.%d.%d.%d", bp[0], bp[1], bp[2], bp[3]);
 													break;
 												}
-												//								else if (AF_INET6 == pUnicast->Address.lpSockaddr->sa_family)// IPV6 åœ°å€ï¼Œä½¿ç”¨ IPV6 è½¬æ¢
+												//								else if (AF_INET6 == pUnicast->Address.lpSockaddr->sa_family)// IPV6 µØÖ·£¬Ê¹ÓÃ IPV6 ×ª»»
 												//									inet_ntop(PF_INET6, &((sockaddr_in6*)pUnicast->Address.lpSockaddr)->sin6_addr, IP, sizeof(IP));
 												pUnicast = pUnicast->Next;
 											}
@@ -1550,14 +1550,14 @@ DWORD WINAPI GetDataThreadProc(PVOID pParam)//è·å–æ¸©åº¦å ç”¨ç¡¬ç›˜çº¿ç¨‹
 	return 0;
 }
 //
-//   å‡½æ•°: InitInstance(HINSTANCE, int)
+//   º¯Êı: InitInstance(HINSTANCE, int)
 //
-//   ç›®æ ‡: ä¿å­˜å®ä¾‹å¥æŸ„å¹¶åˆ›å»ºä¸»çª—å£
+//   Ä¿±ê: ±£´æÊµÀı¾ä±ú²¢´´½¨Ö÷´°¿Ú
 //
-//   æ³¨é‡Š:
+//   ×¢ÊÍ:
 //
-//        åœ¨æ­¤å‡½æ•°ä¸­ï¼Œæˆ‘ä»¬åœ¨å…¨å±€å˜é‡ä¸­ä¿å­˜å®ä¾‹å¥æŸ„å¹¶
-//        åˆ›å»ºå’Œæ˜¾ç¤ºä¸»ç¨‹åºçª—å£ã€‚
+//        ÔÚ´Ëº¯ÊıÖĞ£¬ÎÒÃÇÔÚÈ«¾Ö±äÁ¿ÖĞ±£´æÊµÀı¾ä±ú²¢
+//        ´´½¨ºÍÏÔÊ¾Ö÷³ÌĞò´°¿Ú¡£
 //
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
@@ -1566,13 +1566,13 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	{
 		return FALSE;
 	}
-	////////////////////////////////////////////////////////////å½“å‰DPI
+	////////////////////////////////////////////////////////////µ±Ç°DPI
 	hDesktopDC = GetDC(NULL);
 	HDC hdc = GetDC(hMain);
 	iDPI = GetDeviceCaps(hdc, LOGPIXELSY);
 	::ReleaseDC(hMain, hdc);
 //	EnableNonClientDpiScaling(hMain);
-	//////////////////////////////////////////////////////////////////åˆ›å»ºç¨‹åºå…¨å±æ—¶æ¶ˆæ¯
+	//////////////////////////////////////////////////////////////////´´½¨³ÌĞòÈ«ÆÁÊ±ÏûÏ¢
 	APPBARDATA abd;
 	abd.cbSize = sizeof(abd);
 	abd.hWnd = hMain;
@@ -1580,7 +1580,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	pSHAppBarMessage(ABM_NEW, &abd);
 	bThemeMode = GetSystemUsesLightTheme();
 	g_uTaskbarCreated = RegisterWindowMessage(L"TaskbarCreated");
-	//////////////////////////////////////////////////////////////////////////////////è®¾ç½®é€šçŸ¥æ å›¾æ ‡
+	//////////////////////////////////////////////////////////////////////////////////ÉèÖÃÍ¨ÖªÀ¸Í¼±ê
 	nid.cbSize = sizeof NOTIFYICONDATA;
 	nid.uID = WM_IAWENTRAY;
 	nid.hWnd = hMain;
@@ -1598,14 +1598,14 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	{
 		AdjustWindowPos();
 	}
-	SetTimer(hMain, 3, TraySave.FlushTime, NULL);//è‡ªå®šæ—¶é—´å¤„ç†ç›‘æ§çª—å£ä½ç½®å’Œä»»åŠ¡æ é€æ˜
-	SetTimer(hMain, 6, 1000, NULL);//æ¯ç§’å¤„ç†ä»»åŠ¡æ å›¾æ ‡
-	SetTimer(hMain, 11, 6000, NULL);//å†…å­˜é‡Šæ”¾
-	SetTimer(hMain, 3000, 3000, NULL);//æ¯ä¸‰ç§’é‡æ–°è¯»å–ç³»ç»Ÿçª—å£
+	SetTimer(hMain, 3, TraySave.FlushTime, NULL);//×Ô¶¨Ê±¼ä´¦Àí¼à¿Ø´°¿ÚÎ»ÖÃºÍÈÎÎñÀ¸Í¸Ã÷
+	SetTimer(hMain, 6, 1000, NULL);//Ã¿Ãë´¦ÀíÈÎÎñÀ¸Í¼±ê
+	SetTimer(hMain, 11, 6000, NULL);//ÄÚ´æÊÍ·Å
+	SetTimer(hMain, 3000, 3000, NULL);//Ã¿ÈıÃëÖØĞÂ¶ÁÈ¡ÏµÍ³´°¿Ú
 	hGetDataThread = CreateThread(NULL, 0, GetDataThreadProc, 0, 0, 0);
 	return TRUE;
 }
-BOOL Find(IAccessible* paccParent, int iRole, IAccessible** paccChild)//æŸ¥æ‰¾ä»»åŠ¡å›¾æ ‡UI
+BOOL Find(IAccessible* paccParent, int iRole, IAccessible** paccChild)//²éÕÒÈÎÎñÍ¼±êUI
 {
 	HRESULT hr;
 	long numChildren;
@@ -1677,7 +1677,7 @@ BOOL Find(IAccessible* paccParent, int iRole, IAccessible** paccChild)//æŸ¥æ‰¾ä»
 }
 int oleft=0, otop=0;
 int iIconsWidth=0;
-void SetTaskBarPos(HWND hTaskListWnd, HWND hTrayWnd, HWND hTaskWnd, HWND hReBarWnd, BOOL bMainTray)//è®¾ç½®ä»»åŠ¡æ å›¾æ ‡ä½ç½®
+void SetTaskBarPos(HWND hTaskListWnd, HWND hTrayWnd, HWND hTaskWnd, HWND hReBarWnd, BOOL bMainTray)//ÉèÖÃÈÎÎñÀ¸Í¼±êÎ»ÖÃ
 {
 	if (hOleacc == NULL)
 	{
@@ -1892,7 +1892,7 @@ void SetWH()
 	HDC mdc = GetDC(hMain);
 	TraySave.TraybarFont.lfHeight = DPI(TraySave.TraybarFontSize);
 	DeleteObject(hFont);
-	hFont = CreateFontIndirect(&TraySave.TraybarFont); //åˆ›å»ºå­—ä½“
+	hFont = CreateFontIndirect(&TraySave.TraybarFont); //´´½¨×ÖÌå
 	HFONT oldFont = (HFONT)SelectObject(mdc, hFont);
 	SIZE tSize;
 	WCHAR sz[16]=L"8";
@@ -1903,7 +1903,7 @@ void SetWH()
 	{
 		if (TraySave.iMonitorSimple == 1)
 		{
-			WCHAR szT[] = L"Mâ†“:8.88";
+			WCHAR szT[] = L"M¡ı:8.88";
 			::GetTextExtentPoint(mdc, szT, lstrlen(szT), &tSize);
 		}
 		else if (TraySave.iMonitorSimple == 2)
@@ -1942,7 +1942,7 @@ void SetWH()
 	if (TraySave.bMonitorTemperature)
 	{
 		if (TraySave.iMonitorSimple == 1)
-			::GetTextExtentPoint(mdc, L"88â„ƒ", lstrlen(L"88â„ƒ"), &tSize);
+			::GetTextExtentPoint(mdc, L"88¡æ", lstrlen(L"88¡æ"), &tSize);
 		else if (TraySave.iMonitorSimple == 2)
 			::GetTextExtentPoint(mdc, L"88", lstrlen(L"88"), &tSize);
 		else
@@ -1998,9 +1998,9 @@ void SetWH()
 	ottop = -1;
 	otleft = -1;
 }
-void AdjustWindowPos()//è®¾ç½®ä¿¡æ¯çª—å£ä½ç½®å¤§å°
+void AdjustWindowPos()//ÉèÖÃĞÅÏ¢´°¿ÚÎ»ÖÃ´óĞ¡
 {	
-	if (IsWindow(hTray) == FALSE)//ä»»åŠ¡æ å¥”æºƒæ—¶é‡å¯
+	if (IsWindow(hTray) == FALSE)//ÈÎÎñÀ¸±¼À£Ê±ÖØÆô
 	{
 		DestroyWindow(hTime);
 		DestroyWindow(hTaskBar);
@@ -2343,7 +2343,7 @@ void GetTrafficStr(WCHAR* sz, size_t bufSize, ULONG64 uByte, BOOL bBit, int iUni
 	if (bBit)
 		lstrlwr(sz, lstrlen(sz));
 }
-INT_PTR CALLBACK TaskTipsProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)//æç¤ºä¿¡æ¯çª—å£è¿‡ç¨‹
+INT_PTR CALLBACK TaskTipsProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)//ÌáÊ¾ĞÅÏ¢´°¿Ú¹ı³Ì
 {
 	switch (message)
 	{
@@ -2625,7 +2625,7 @@ DrawText(mdc, traffic[i].szFriendlyName, lstrlen(traffic[i].szFriendlyName), &rc
 					GetTrafficStr(sz, ARRAYSIZE(sz), traffic[i].in_byte, HIWORD(TraySave.iUnit));
 					rc.left = crc.right * 66 / 100 + 2;
 					rc.right = crc.right * 78 / 100-2;
-					DrawText(mdc, L"â†“:", 2, &rc, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+					DrawText(mdc, L"¡ı:", 2, &rc, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
 					DrawText(mdc, sz, lstrlen(sz), &rc, DT_RIGHT | DT_VCENTER | DT_SINGLELINE);
 					rc.left = crc.right * 78 / 100 + 2;
 					rc.right = crc.right * 87 / 100 - 2;
@@ -2634,7 +2634,7 @@ DrawText(mdc, traffic[i].szFriendlyName, lstrlen(traffic[i].szFriendlyName), &rc
 					GetTrafficStr(sz, ARRAYSIZE(sz), traffic[i].out_byte, HIWORD(TraySave.iUnit));
 					rc.left = crc.right * 87 / 100 + 2;
 					rc.right = crc.right - 5;
-					DrawText(mdc, L"â†‘:", 2, &rc, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+					DrawText(mdc, L"¡ü:", 2, &rc, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
 					DrawText(mdc, sz, lstrlen(sz), &rc, DT_RIGHT | DT_VCENTER | DT_SINGLELINE);
 					OffsetRect(&rc, 0, wTipsHeight);
 				}
@@ -2673,7 +2673,7 @@ DrawText(mdc, traffic[i].szFriendlyName, lstrlen(traffic[i].szFriendlyName), &rc
 					cr.right = crc.right * 100 / 156;
 					if (PtInRect(&cr, pt))
 						SetTextColor(mdc, RGB(255, 255, 255));
-					DrawText(mdc, L"è·¯å¾„", 2, &cr, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+					DrawText(mdc, L"Â·¾¶", 2, &cr, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 					OffsetRect(&rc, 0, wTipsHeight);
 				}
 				for (int i = 0; i < 6; i++)
@@ -2714,7 +2714,7 @@ DrawText(mdc, traffic[i].szFriendlyName, lstrlen(traffic[i].szFriendlyName), &rc
 					cr.right = crc.right * 100 / 156;
 					if (PtInRect(&cr, pt))
 						SetTextColor(mdc, RGB(255, 255, 255));
-					DrawText(mdc, L"è·¯å¾„", 2, &cr, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+					DrawText(mdc, L"Â·¾¶", 2, &cr, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 					OffsetRect(&rc, 0, wTipsHeight);
 				}
 
@@ -2768,7 +2768,7 @@ DrawText(mdc, traffic[i].szFriendlyName, lstrlen(traffic[i].szFriendlyName), &rc
 							{
 								int iCGhz = pi[0].CurrentMhz / 10;
 								int iMGhz = pi[0].MaxMhz / 10;
-								swprintf_s(sz, ARRAYSIZE(sz),  L"%dä¸ªé€»è¾‘å¤„ç†å™¨ å½“å‰é¢‘ç‡%d.%.2dGHz æœ€å¤§é¢‘ç‡%d.%.2dGHz", dNumProcessor, iCGhz/100,iCGhz%100, iMGhz / 100, iMGhz % 100);
+								swprintf_s(sz, ARRAYSIZE(sz),  L"%d¸öÂß¼­´¦ÀíÆ÷ µ±Ç°ÆµÂÊ%d.%.2dGHz ×î´óÆµÂÊ%d.%.2dGHz", dNumProcessor, iCGhz/100,iCGhz%100, iMGhz / 100, iMGhz % 100);
 							}
 							HeapFree(GetProcessHeap(), 0,pi);
 							DrawText(mdc, sz, lstrlen(sz), &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
@@ -2785,7 +2785,7 @@ DrawText(mdc, traffic[i].szFriendlyName, lstrlen(traffic[i].szFriendlyName), &rc
 					FillRect(mdc, &frc, hb2);
 				else
 					FillRect(mdc, &frc, hb4);
-				swprintf_s(sz, ARRAYSIZE(sz), L"è™šæ‹Ÿå†…å­˜:%d.%.2d/%d.%.2dGB", iaPage / 100, iaPage % 100, itPage / 100, itPage % 100);
+				swprintf_s(sz, ARRAYSIZE(sz), L"ĞéÄâÄÚ´æ:%d.%.2d/%d.%.2dGB", iaPage / 100, iaPage % 100, itPage / 100, itPage % 100);
 				DrawText(mdc, sz, lstrlen(sz), &rc, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
 				rc.left = crc.right * 50 / 100 + 1;
 				rc.right = crc.right * 92 / 100 - 2;
@@ -2799,11 +2799,11 @@ DrawText(mdc, traffic[i].szFriendlyName, lstrlen(traffic[i].szFriendlyName), &rc
 				DeleteObject(hb2);
 				DeleteObject(hb3);
 				DeleteObject(hb4);
-				swprintf_s(sz, ARRAYSIZE(sz), L"ç‰©ç†å†…å­˜:%d.%.2d/%d.%.2dGB", ia / 100, ia % 100, it / 100, it % 100);
+				swprintf_s(sz, ARRAYSIZE(sz), L"ÎïÀíÄÚ´æ:%d.%.2d/%d.%.2dGB", ia / 100, ia % 100, it / 100, it % 100);
 				DrawText(mdc, sz, lstrlen(sz), &rc, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
 
-				WCHAR set[] = L"è®¾ç½®";
-				WCHAR sexit[] = L"é€€å‡º";
+				WCHAR set[] = L"ÉèÖÃ";
+				WCHAR sexit[] = L"ÍË³ö";
 				rc.top -= wTipsHeight;
 				rc.right = crc.right * 8 / 100;
 				rc.left = 0;
@@ -2824,7 +2824,7 @@ DrawText(mdc, traffic[i].szFriendlyName, lstrlen(traffic[i].szFriendlyName), &rc
 	}
 	return (INT_PTR)FALSE;
 }
-void GetProcessCpuUsage()//è·å–è¿›ç¨‹CPUå ç”¨å‰äº”
+void GetProcessCpuUsage()//»ñÈ¡½ø³ÌCPUÕ¼ÓÃÇ°Îå
 {
 	if (!inTipsProcessX)
 	{
@@ -2975,7 +2975,7 @@ void GetProcessCpuUsage()//è·å–è¿›ç¨‹CPUå ç”¨å‰äº”
 		CloseHandle(hs);
 	}
 }
-int GetProcessMemUsage()//è·å–è¿›ç¨‹å†…å­˜å ç”¨å‰äº”
+int GetProcessMemUsage()//»ñÈ¡½ø³ÌÄÚ´æÕ¼ÓÃÇ°Îå
 {
 	if (!inTipsProcessX)
 	{
@@ -3149,9 +3149,9 @@ void DrawDisk(HDC mdc, LPRECT lpRect, double dwByte,BOOL bReadWrite)
 }
 void DrawTraffic(HDC mdc, LPRECT lpRect, ULONG64 dwByte, BOOL bInOut)
 {
-	WCHAR szInS[] = L"â†“:";
+	WCHAR szInS[] = L"¡ı:";
 	WCHAR szInS2[] = L"";
-	WCHAR szOutS[] = L"â†‘:";
+	WCHAR szOutS[] = L"¡ü:";
 	WCHAR szOutS2[] = L"";
 	WCHAR* szT;
 	if (bInOut)
@@ -3192,11 +3192,11 @@ BOOL SetTrackMouseEvent(HWND hWnd, DWORD dwFlags)
 	TRACKMOUSEEVENT csTME;
 	csTME.cbSize = sizeof(csTME);
 	csTME.dwFlags = dwFlags;
-	csTME.hwndTrack = hWnd;// æŒ‡å®šè¦ è¿½è¸ª çš„çª—å£
-	csTME.dwHoverTime = 300;  // é¼ æ ‡åœ¨æŒ‰é’®ä¸Šåœç•™è¶…è¿‡ 300ms ï¼Œæ‰è®¤ä¸ºçŠ¶æ€ä¸º HOVER
+	csTME.hwndTrack = hWnd;// Ö¸¶¨Òª ×·×Ù µÄ´°¿Ú
+	csTME.dwHoverTime = 300;  // Êó±êÔÚ°´Å¥ÉÏÍ£Áô³¬¹ı 300ms £¬²ÅÈÏÎª×´Ì¬Îª HOVER
 	return TrackMouseEvent(&csTME);
 }
-INT_PTR CALLBACK TimeProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)//ä»»åŠ¡æ ä¿¡æ¯çª—å£è¿‡ç¨‹
+INT_PTR CALLBACK TimeProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)//ÈÎÎñÀ¸ĞÅÏ¢´°¿Ú¹ı³Ì
 {
 	switch (message)
 	{
@@ -3231,7 +3231,7 @@ INT_PTR CALLBACK TimeProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 			SYSTEMTIME systm;
 			GetLocalTime(&systm);
 			WCHAR sz[16];
-			TCHAR szWeek[7][2] = { L"æ—¥",L"ä¸€",L"äºŒ",L"ä¸‰",L"å››",L"äº”",L"å…­" };
+			TCHAR szWeek[7][2] = { L"ÈÕ",L"Ò»",L"¶ş",L"Èı",L"ËÄ",L"Îå",L"Áù" };
 
 			int fsize;
 			if (hWin11UI)
@@ -3247,7 +3247,7 @@ INT_PTR CALLBACK TimeProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 			HFONT hFont = CreateFont(fsize, 0, 0, 0, 0, false, false, false,
 				DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
 				CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY,
-				DEFAULT_PITCH, L"å¾®è½¯é›…é»‘");
+				DEFAULT_PITCH, L"Î¢ÈíÑÅºÚ");
 			HFONT oldFont = (HFONT)SelectObject(mdc, hFont);
 			SetBkMode(mdc, TRANSPARENT);
 			SetTextColor(mdc, rgb);
@@ -3263,7 +3263,7 @@ INT_PTR CALLBACK TimeProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 				BYTE* lpvBits = NULL;
 				BITMAPINFO binfo;
 				memset(&binfo, 0, sizeof(BITMAPINFO));
-				binfo.bmiHeader.biBitCount = 32;     //æ¯ä¸ªåƒç´ å¤šå°‘ä½ï¼Œä¹Ÿå¯ç›´æ¥å†™24(RGB)æˆ–è€…32(RGBA)
+				binfo.bmiHeader.biBitCount = 32;     //Ã¿¸öÏñËØ¶àÉÙÎ»£¬Ò²¿ÉÖ±½ÓĞ´24(RGB)»òÕß32(RGBA)
 				binfo.bmiHeader.biCompression = 0;
 				binfo.bmiHeader.biHeight = rc.bottom - rc.top;
 				binfo.bmiHeader.biPlanes = 1;
@@ -3297,7 +3297,7 @@ INT_PTR CALLBACK TimeProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 	return FALSE;
 }
 
-INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)//ä»»åŠ¡æ ä¿¡æ¯çª—å£è¿‡ç¨‹
+INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)//ÈÎÎñÀ¸ĞÅÏ¢´°¿Ú¹ı³Ì
 {
 	switch (message)
 	{
@@ -3383,10 +3383,10 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 			}
 			HDC mdc = GetDC(hMain);
 			TraySave.TipsFont.lfHeight = DPI(TraySave.TipsFontSize);
-			HFONT hTipsFont = CreateFontIndirect(&TraySave.TipsFont); //åˆ›å»ºå­—ä½“
+			HFONT hTipsFont = CreateFontIndirect(&TraySave.TipsFont); //´´½¨×ÖÌå
 			HFONT oldFont = (HFONT)SelectObject(mdc, hTipsFont);
 			SIZE tSize;
-			::GetTextExtentPoint(mdc, L"è™šæ‹Ÿå†…å­˜è™šæ‹Ÿå†…å­˜è™šæ‹Ÿå†…å­˜è™šæ‹Ÿå†…å­˜è™šæ‹Ÿå†…å­˜è™šæ‹Ÿå†…å­˜è™šæ‹Ÿå†…å­˜è™šæ‹Ÿå†…å­˜è™šæ‹Ÿå†…å­˜", 36, &tSize);
+			::GetTextExtentPoint(mdc, L"ĞéÄâÄÚ´æĞéÄâÄÚ´æĞéÄâÄÚ´æĞéÄâÄÚ´æĞéÄâÄÚ´æĞéÄâÄÚ´æĞéÄâÄÚ´æĞéÄâÄÚ´æĞéÄâÄÚ´æ", 36, &tSize);
 			SelectObject(mdc, oldFont);
 			DeleteObject(hTipsFont);
 			::ReleaseDC(hMain, mdc);
@@ -3525,7 +3525,7 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 			KillTimer(hDlg, wParam);
 			ShowWindow(hDlg, SW_SHOWNOACTIVATE);
 		}
-		else if (wParam == 5)////////////////////////////////////////////////å…‰æ ‡ç§»å‡ºå¼¹å‡ºå¼èœå•è‡ªåŠ¨éšè—èœå•
+		else if (wParam == 5)////////////////////////////////////////////////¹â±êÒÆ³öµ¯³öÊ½²Ëµ¥×Ô¶¯Òş²Ø²Ëµ¥
 		{
 
 			HWND hMenu = FindWindow(L"#32768", NULL);
@@ -3785,7 +3785,7 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 						else
 						{
 							if (TraySave.iMonitorSimple == 1)
-								swprintf_s(sz, ARRAYSIZE(sz), L"%.2dâ„ƒ", TrayData->iTemperature1);
+								swprintf_s(sz, ARRAYSIZE(sz), L"%.2d¡æ", TrayData->iTemperature1);
 							else if (TraySave.iMonitorSimple == 2)
 								swprintf_s(sz, ARRAYSIZE(sz), L"%.2d", TrayData->iTemperature1);
 							else
@@ -3812,7 +3812,7 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 						else
 							crc.bottom += (crc.bottom - crc.top);
 					}
-					if (hATIDLL == NULL && hNVDLL == NULL && TraySave.bMonitorDisk&&!hOHMA&&TrayData->disktime!=0)//å¦‚æœæ²¡æœ‰ç‹¬ç«‹æ˜¾å¡åˆ™æ˜¾ç¤ºç£ç›˜ä½¿ç”¨ç‡
+					if (hATIDLL == NULL && hNVDLL == NULL && TraySave.bMonitorDisk&&!hOHMA&&TrayData->disktime!=0)//Èç¹ûÃ»ÓĞ¶ÀÁ¢ÏÔ¿¨ÔòÏÔÊ¾´ÅÅÌÊ¹ÓÃÂÊ
 						TrayData->iTemperature2 = TrayData->disktime;
 					if (TrayData->iTemperature2 <= TraySave.dNumValues[2])
 						rgb = TraySave.cMonitorColor[4];
@@ -3841,7 +3841,7 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 							swprintf_s(sz, ARRAYSIZE(sz), L"%.2d%s", TrayData->iTemperature2, TraySave.szTemperatureGPUUnit);
 						}
 						else if (TraySave.iMonitorSimple == 1)
-							swprintf_s(sz, ARRAYSIZE(sz), L"%.2dâ„ƒ", TrayData->iTemperature2);
+							swprintf_s(sz, ARRAYSIZE(sz), L"%.2d¡æ", TrayData->iTemperature2);
 						else
 							swprintf_s(sz, ARRAYSIZE(sz), L"%.2d", TrayData->iTemperature2);
 					}
@@ -3879,7 +3879,7 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 								swprintf_s(sz, ARRAYSIZE(sz), L"%.2d%s", TrayData->iHddTemperature, TraySave.szTemperatureCPUUnit);
 							}
 							else if (TraySave.iMonitorSimple == 1)
-								swprintf_s(sz, ARRAYSIZE(sz), L"%.2dâ„ƒ", TrayData->iHddTemperature);
+								swprintf_s(sz, ARRAYSIZE(sz), L"%.2d¡æ", TrayData->iHddTemperature);
 							else
 								swprintf_s(sz, ARRAYSIZE(sz), L"%.2d", TrayData->iHddTemperature);
 							DrawShadowText(mdc, sz, lstrlen(sz), &crc, DT_RIGHT | DT_VCENTER | DT_SINGLELINE, bColor, bShadow);
@@ -3935,7 +3935,7 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 								swprintf_s(sz, ARRAYSIZE(sz), L"%.2d%s", TrayData->iHddTemperature, TraySave.szTemperatureCPUUnit);
 							}
 							else if (TraySave.iMonitorSimple == 1)
-								swprintf_s(sz, ARRAYSIZE(sz), L"%.2dâ„ƒ", TrayData->iHddTemperature);
+								swprintf_s(sz, ARRAYSIZE(sz), L"%.2d¡æ", TrayData->iHddTemperature);
 							else
 								swprintf_s(sz, ARRAYSIZE(sz), L"%.2d", TrayData->iHddTemperature);
 							DrawShadowText(mdc, sz, lstrlen(sz), &crc, DT_RIGHT | DT_VCENTER | DT_SINGLELINE, bColor, bShadow);
@@ -3979,7 +3979,7 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 					SYSTEMTIME systm;
 					GetLocalTime(&systm);
 					RECT crc = rc;
-					TCHAR szWeek[7][2] = { L"æ—¥",L"ä¸€",L"äºŒ",L"ä¸‰",L"å››",L"äº”",L"å…­" };
+					TCHAR szWeek[7][2] = { L"ÈÕ",L"Ò»",L"¶ş",L"Èı",L"ËÄ",L"Îå",L"Áù" };
 					swprintf_s(sz, ARRAYSIZE(sz), L"%.2d/%.2d'%s", systm.wMonth, systm.wDay, szWeek[systm.wDayOfWeek]);
 					int sLen = lstrlen(sz);
 					if (VTray)
@@ -4037,13 +4037,13 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 			//		GetClientRect(hDlg, &rc);
 			if (VTray)
 				InflateRect(&rc, wSpace / 2, 0);
-			if(TraySave.bMonitorFuse)/////////////////èƒŒæ™¯èåˆ
+			if(TraySave.bMonitorFuse)/////////////////±³¾°ÈÚºÏ
 			{
 				BYTE* lpvBits = NULL;
 
 				BITMAPINFO binfo;
 				memset(&binfo, 0, sizeof(BITMAPINFO));
-				binfo.bmiHeader.biBitCount = 32;     //æ¯ä¸ªåƒç´ å¤šå°‘ä½ï¼Œä¹Ÿå¯ç›´æ¥å†™24(RGB)æˆ–è€…32(RGBA)
+				binfo.bmiHeader.biBitCount = 32;     //Ã¿¸öÏñËØ¶àÉÙÎ»£¬Ò²¿ÉÖ±½ÓĞ´24(RGB)»òÕß32(RGBA)
 				binfo.bmiHeader.biCompression = 0;
 				binfo.bmiHeader.biHeight = rc.bottom - rc.top;
 				binfo.bmiHeader.biPlanes = 1;
@@ -4082,7 +4082,7 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 	}
 	return FALSE;
 }
-INT_PTR CALLBACK MainProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)//ä¸»çª—å£è¿‡ç¨‹
+INT_PTR CALLBACK MainProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)//Ö÷´°¿Ú¹ı³Ì
 {
 	UNREFERENCED_PARAMETER(lParam);
 	if (g_uTaskbarCreated && message == g_uTaskbarCreated)
@@ -4155,7 +4155,7 @@ INT_PTR CALLBACK MainProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 	{
 		KillTimer(hDlg, 6);
 		KillTimer(hDlg, 3);
-		// æ¢å¤ä»»åŠ¡æ é»˜è®¤æ ·å¼
+		// »Ö¸´ÈÎÎñÀ¸Ä¬ÈÏÑùÊ½
 		if (TraySave.bTrayStyle)
 		{
 			SetWindowCompositionAttribute(hTray, ACCENT_DISABLED, 0, (hWin11UI != NULL));
@@ -4163,7 +4163,7 @@ INT_PTR CALLBACK MainProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 			exStyle &= ~WS_EX_LAYERED;
 			SetWindowLongPtr(hTray, GWL_EXSTYLE, exStyle);
 			SetLayeredWindowAttributes(hTray, 0, 255, LWA_ALPHA);
-			// æ¢å¤å‰¯å±ä»»åŠ¡æ 
+			// »Ö¸´¸±ÆÁÈÎÎñÀ¸
 			HWND hSecTray = FindWindow(szSecondaryTray, NULL);
 			while (hSecTray)
 			{
@@ -4198,13 +4198,13 @@ INT_PTR CALLBACK MainProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 		}
 		else if(wParam==3000)
 			GetShellAllWnd();
-		else if (wParam == 11)//é‡Šæ”¾å†…å­˜
+		else if (wParam == 11)//ÊÍ·ÅÄÚ´æ
 		{
 			KillTimer(hDlg, wParam);
 			SetTimer(hDlg, wParam, 60000, NULL);
 			EmptyProcessMemory();
 		}
-		else if (wParam == 6)//å¤„ç†ä»»åŠ¡æ å›¾æ ‡ä¸ä¿¡æ¯çª—å£
+		else if (wParam == 6)//´¦ÀíÈÎÎñÀ¸Í¼±êÓëĞÅÏ¢´°¿Ú
 		{
 			if (TraySave.bTrayStyle)
 			{
@@ -4232,7 +4232,7 @@ INT_PTR CALLBACK MainProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 				}
 			}
 		}
-		else if (wParam == 3)//å¤„ç†ä»»åŠ¡æ é£æ ¼
+		else if (wParam == 3)//´¦ÀíÈÎÎñÀ¸·ç¸ñ
 		{
 			if (TraySave.bMonitor)
 			{
@@ -4286,12 +4286,12 @@ INT_PTR CALLBACK MainProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 					hSecondaryTray = FindWindowEx(NULL, hSecondaryTray, szSecondaryTray, NULL);
 				}
 			}
-			//			if (TraySave.aMode[0] == ACCENT_DISABLED && TraySave.aMode[1] == ACCENT_DISABLED)//é»˜è®¤åˆ™å…³é—­å®šæ—¶å™¨
+			//			if (TraySave.aMode[0] == ACCENT_DISABLED && TraySave.aMode[1] == ACCENT_DISABLED)//Ä¬ÈÏÔò¹Ø±Õ¶¨Ê±Æ÷
 			//				KillTimer(hDlg, 3);
 		}
 	}
 	break;
-	case WM_IAWENTRAY://////////////////////////////////////////////////////////////////////////////////é€šçŸ¥æ å·¦å³é”®å¤„ç†
+	case WM_IAWENTRAY://////////////////////////////////////////////////////////////////////////////////Í¨ÖªÀ¸×óÓÒ¼ü´¦Àí
 	{
 		if (LOWORD(lParam) == WM_LBUTTONDOWN || LOWORD(lParam) == WM_RBUTTONDOWN)
 		{
@@ -4303,7 +4303,7 @@ INT_PTR CALLBACK MainProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 	}
 	return FALSE;
 }
-INT_PTR CALLBACK SettingProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)//è®¾ç½®çª—å£è¿‡ç¨‹
+INT_PTR CALLBACK SettingProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)//ÉèÖÃ´°¿Ú¹ı³Ì
 {
 	UNREFERENCED_PARAMETER(lParam);
 	switch (message)
@@ -4333,7 +4333,7 @@ INT_PTR CALLBACK SettingProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 		}
 		}
 		break;
-	case WM_HSCROLL://////////////////////////////////////////////////////////////////////////////////é€æ˜åº¦å¤„ç†
+	case WM_HSCROLL://////////////////////////////////////////////////////////////////////////////////Í¸Ã÷¶È´¦Àí
 	{
 		HWND hSlider = GetDlgItem(hDlg, IDC_SLIDER_ALPHA);
 		HWND hSliderB = GetDlgItem(hDlg, IDC_SLIDER_ALPHA_B);
@@ -4790,7 +4790,7 @@ INT_PTR CALLBACK SettingProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 	}
 	return (INT_PTR)FALSE;
 }
-INT_PTR CALLBACK ColorButtonProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)//é¢œè‰²æŒ‰é’®æ§ä»¶è¿‡ç¨‹
+INT_PTR CALLBACK ColorButtonProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)//ÑÕÉ«°´Å¥¿Ø¼ş¹ı³Ì
 {
 	switch (message)
 	{
