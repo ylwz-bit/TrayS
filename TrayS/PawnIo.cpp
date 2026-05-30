@@ -45,9 +45,11 @@ typedef struct {
 
 static const CpuTjMaxEntry g_cpuTjDb[] = {
     // Panther Lake (Intel Core Ultra 200V/300, CPUID Family=6 Model=0xCC)
-    // 实测: E-Core 实际 TjMax=93, MSR 0x1A2 报告 100, 偏差 7°C
-    // 测试平台: Intel Core Ultra 5 338H (DESKTOP-BABABOY)
-    { 6, 0xCC, 0, 93, 0, L"Panther Lake" },
+    // 实测: MSR 0x1A2 报告 TjMax=100, 对所有核心域(P/E/LP)均正确
+    // E-Core/LP-Core 均返回 CPUID 0x1A type=0x20, 无法区分, 统一使用 MSR 值
+    // 测试平台: Intel Core Ultra 5 338H (DESKTOP-BABABOY, DESKTOP-CC73MCQ)
+    // 条目保留为记录, 所有域=0 表示不覆盖 MSR 默认值
+    { 6, 0xCC, 0, 0, 0, L"Panther Lake" },
 
     // === 以下为待验证条目 (取消注释并填入实测数据) ===
     // Arrow Lake-S (Core Ultra 200, CPUID Family=6 Model=0xC5)
