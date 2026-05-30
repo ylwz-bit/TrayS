@@ -1330,8 +1330,8 @@ DWORD WINAPI GetDataThreadProc(PVOID pParam)//获取温度占用硬盘线程
 					{
 						WCHAR dbg[128];
 						swprintf_s(dbg, ARRAYSIZE(dbg),
-							L"[TEMP-GPU] IGCL: %.1f -> Temperature2=%d\n",
-							gpuTemp, TrayData->iTemperature2);
+							L"[TEMP-GPU] source=IGCL temp=%d (%.1f)\n",
+							TrayData->iTemperature2, gpuTemp);
 						OutputDebugStringW(dbg);
 					}
 #endif
@@ -1349,9 +1349,10 @@ DWORD WINAPI GetDataThreadProc(PVOID pParam)//获取温度占用硬盘线程
 #ifdef _DEBUG
 					{
 						WCHAR dbg[128];
+						const wchar_t* src = (fGpu > 0) ? L"OHM-GPU" : L"OHM-Pkg";
 						swprintf_s(dbg, ARRAYSIZE(dbg),
-							L"[TEMP-GPU] OHM: fGpu=%.0f fPkg=%.0f -> Temperature2=%d\n",
-							fGpu, fCpuPkg, TrayData->iTemperature2);
+							L"[TEMP-GPU] source=%s temp=%d (fGpu=%.0f fPkg=%.0f)\n",
+							src, TrayData->iTemperature2, fGpu, fCpuPkg);
 						OutputDebugStringW(dbg);
 					}
 #endif
