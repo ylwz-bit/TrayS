@@ -1320,20 +1320,48 @@ DWORD WINAPI GetDataThreadProc(PVOID pParam)//获取温度占用硬盘线程
 					}
 #endif
 					}
-					else if (bPawnIoReady)
+					else if (g_igclDevice && CtlGetTemperature)
 					{
-						// 无独显温度时，用Package温度兜底 (与OHM的fCpuPackge一致)
-						TrayData->iTemperature2 = PawnIo_GetPackageTemp(&g_PawnIo);
+						// Intel IGCL 直接读取核显温度
+						double gpuTemp = 0;
+						if (CtlGetTemperature(g_igclDevice, 0, &gpuTemp) == 0 && gpuTemp > 0)
+							TrayData->iTemperature2 = (int)gpuTemp;
 #ifdef _DEBUG
 					{
 						WCHAR dbg[128];
 						swprintf_s(dbg, ARRAYSIZE(dbg),
-							L"[TEMP-GPU] fallback: no GPU temp, Package=%d\n",
-							TrayData->iTemperature2);
+							L"[TEMP-GPU] IGCL: %.1f -> Temperature2=%d\n",
+							gpuTemp, TrayData->iTemperature2);
 						OutputDebugStringW(dbg);
 					}
 #endif
-				}
+					}
+					else if (hOHMA && GetTemperature)
+					{
+						// OpenHardwareMonitorApi 读取 Intel 核显温度
+						float fGpu = -1;
+						float fCpuPkg = -1;
+						GetTemperature(NULL, &fGpu, NULL, NULL, -1, &fCpuPkg);
+						if (fGpu > 0)
+							TrayData->iTemperature2 = (int)fGpu;
+						else if (fCpuPkg > 0)
+							TrayData->iTemperature2 = (int)fCpuPkg;
+#ifdef _DEBUG
+					{
+						WCHAR dbg[128];
+						swprintf_s(dbg, ARRAYSIZE(dbg),
+							L"[TEMP-GPU] OHM: fGpu=%.0f fPkg=%.0f -> Temperature2=%d\n",
+							fGpu, fCpuPkg, TrayData->iTemperature2);
+						OutputDebugStringW(dbg);
+					}
+#endif
+					}
+#ifdef _DEBUG
+					else
+					{
+						OutputDebugStringW(L"[TEMP-GPU] no GPU temp source available\n");
+					}
+#endif
 			}
 			LeaveCriticalSection(&g_csData);
 		}
