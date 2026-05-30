@@ -697,6 +697,119 @@ void LoadTemperatureDLL()
 #endif
 #ifdef _DEBUG
 	{
+
+	// 加载 OpenHardwareMonitorApi (用于读取 Intel 核显 GPU 温度)
+	hOHMA = LoadLibrary(L"OpenHardwareMonitorApi.dll");
+	if (hOHMA)
+	{
+		GetTemperature = (pfnGetTemperature)GetProcAddress(hOHMA, "GetTemperature");
+		if (!GetTemperature)
+		{
+			FreeLibrary(hOHMA);
+			hOHMA = NULL;
+		}
+	}
+#ifdef _DEBUG
+	{
+		WCHAR dbg[128];
+		swprintf_s(dbg, ARRAYSIZE(dbg),
+			L"[TEMP-INIT] OHM: %s (err=%d)\n",
+			hOHMA ? L"loaded" : L"FAILED", GetLastError());
+		OutputDebugStringW(dbg);
+	}
+#endif
+
+	// 加载 Intel IGCL (Intel Graphics Command Library) 直接读取核显温度
+	// IGCL DLL 随 Intel GPU 驱动安装在 DriverStore 目录, 不在系统 PATH 中
+	{
+		WCHAR igclPath[MAX_PATH] = {};
+		WIN32_FIND_DATAW findData = {};
+
+		// 搜索 Intel 驱动存储目录: iigd_*.inf_amd64_*
+		WCHAR searchPath[MAX_PATH];
+		GetSystemDirectoryW(searchPath, MAX_PATH);
+		wcscat_s(searchPath, L"\\DriverStore\\FileRepository\\iigd_*.inf_amd64_*");
+
+		HANDLE hFind = FindFirstFileW(searchPath, &findData);
+		if (hFind != INVALID_HANDLE_VALUE)
+		{
+			do {
+				// 尝试加载 igdcl_api.dll
+				swprintf_s(igclPath, MAX_PATH, L"%s\\DriverStore\\FileRepository\\%s\\igdcl_api.dll",
+					L"", findData.cFileName);
+				// 修正: 使用完整路径
+				WCHAR sysDir[MAX_PATH];
+				GetSystemDirectoryW(sysDir, MAX_PATH);
+				swprintf_s(igclPath, MAX_PATH, L"%s\\DriverStore\\FileRepository\\%s\\igdcl_api.dll",
+					sysDir, findData.cFileName);
+				hIGCL = LoadLibraryW(igclPath);
+
+				if (!hIGCL)
+				{
+					// 也尝试 ctl_api.dll
+					swprintf_s(igclPath, MAX_PATH, L"%s\\DriverStore\\FileRepository\\%s\\ctl_api.dll",
+						sysDir, findData.cFileName);
+					hIGCL = LoadLibraryW(igclPath);
+				}
+
+				if (hIGCL)
+				{
+					CtlInit = (pfnCtlInit)GetProcAddress(hIGCL, "ctlInit");
+					CtlClose = (pfnCtlClose)GetProcAddress(hIGCL, "ctlClose");
+					CtlEnumDevices = (pfnCtlEnumDevices)GetProcAddress(hIGCL, "ctlEnumerateDevices");
+					CtlGetTemperature = (pfnCtlGetTemperature)GetProcAddress(hIGCL, "ctlGetTemperature");
+					if (!CtlInit || !CtlGetTemperature)
+					{
+						FreeLibrary(hIGCL);
+						hIGCL = NULL;
+					}
+				}
+			} while (!hIGCL && FindNextFileW(hFind, &findData));
+			FindClose(hFind);
+		}
+
+		if (hIGCL && CtlInit)
+		{
+			struct { unsigned short major; unsigned short minor; } apiVer = { 1, 0 };
+			char initBuf[512] = {};
+			memcpy(initBuf, &apiVer, 4);
+			*(unsigned int*)(initBuf + 4) = sizeof(initBuf);
+			int result = CtlInit(initBuf, &g_igclAPI);
+			if (result != 0 || !g_igclAPI)
+			{
+				FreeLibrary(hIGCL);
+				hIGCL = NULL;
+				g_igclAPI = NULL;
+			}
+			else if (CtlEnumDevices)
+			{
+				unsigned int devCount = 0;
+				CtlEnumDevices(g_igclAPI, &devCount, NULL);
+				if (devCount > 0)
+				{
+					void** devList = (void**)HeapAlloc(GetProcessHeap(), 0, devCount * sizeof(void*));
+					if (devList)
+					{
+						CtlEnumDevices(g_igclAPI, &devCount, devList);
+						g_igclDevice = devList[0];
+						HeapFree(GetProcessHeap(), 0, devList);
+					}
+				}
+			}
+		}
+#ifdef _DEBUG
+		{
+			WCHAR dbg[256];
+			swprintf_s(dbg, ARRAYSIZE(dbg),
+				L"[TEMP-INIT] IGCL: dll=%s path=%s api=%p dev=%p temp=%p\n",
+				hIGCL ? L"OK" : L"FAILED",
+				hIGCL ? igclPath : L"N/A",
+				g_igclAPI, g_igclDevice, (void*)CtlGetTemperature);
+			OutputDebugStringW(dbg);
+		}
+#endif
+	}
+
 		// CPU model
 		int cpuInfo[4] = {};
 		char cpuBrand[64] = {};
@@ -728,6 +841,8 @@ void LoadTemperatureDLL()
 		// GPU DLLs
 		OutputDebugStringW(hNVDLL ? L"[SYS-INFO] nvapi64.dll: loaded\n" : L"[SYS-INFO] nvapi64.dll: NOT loaded\n");
 		OutputDebugStringW(hATIDLL ? L"[SYS-INFO] atiadlxx.dll: loaded\n" : L"[SYS-INFO] atiadlxx.dll: NOT loaded\n");
+		OutputDebugStringW(hOHMA ? L"[SYS-INFO] OHM: loaded\n" : L"[SYS-INFO] OHM: NOT loaded\n");
+		OutputDebugStringW(hIGCL ? L"[SYS-INFO] IGCL: loaded\n" : L"[SYS-INFO] IGCL: NOT loaded\n");
 	}
 #endif
 }
