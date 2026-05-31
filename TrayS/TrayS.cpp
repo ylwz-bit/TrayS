@@ -753,6 +753,9 @@ void LoadTemperatureDLL()
 			}
 
 			do {
+				// 跳过非目录和 .ini 文件
+				if (!(findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) continue;
+				if (wcsstr(findData.cFileName, L".ini")) continue;
 				for (int di = 0; di < ARRAYSIZE(igclDllNames) && !hIGCL; di++)
 				{
 					swprintf_s(igclPath, MAX_PATH, L"%s\\DriverStore\\FileRepository\\%s\\%s",
@@ -780,6 +783,25 @@ void LoadTemperatureDLL()
 						hIGCL = NULL;
 					}
 				}
+					// 列出目录中的所有文件
+#ifdef _DEBUG
+				{
+					WCHAR dirPath[MAX_PATH];
+					swprintf_s(dirPath, MAX_PATH, L"%s\\DriverStore\\FileRepository\\%s\\*", sysDir, findData.cFileName);
+					WIN32_FIND_DATAW fileData = {};
+					HANDLE hFileFind = FindFirstFileW(dirPath, &fileData);
+					if (hFileFind != INVALID_HANDLE_VALUE)
+					{
+						do {
+							WCHAR dbg[512];
+							swprintf_s(dbg, ARRAYSIZE(dbg), L"[TEMP-INIT] IGCL:   file [%s] size=%d",
+								fileData.cFileName, (int)fileData.nFileSizeLow);
+							OutputDebugStringW(dbg);
+						} while (FindNextFileW(hFileFind, &fileData));
+						FindClose(hFileFind);
+					}
+				}
+#endif
 			} while (!hIGCL && FindNextFileW(hFind, &findData));
 			FindClose(hFind);
 		}
