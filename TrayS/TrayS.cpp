@@ -734,7 +734,7 @@ void LoadTemperatureDLL()
 			L"iigd_dch*.inf_amd64_*",
 			L"iigd_ext*.inf_amd64_*",
 		};
-		const wchar_t* igclDllNames[] = { L"igdcl_api.dll", L"ctl_api.dll" };
+		const wchar_t* igclDllNames[] = { L"igdcl_api.dll", L"ctl_api.dll", L"intel_gfx_api-x64.dll", L"intel_gfx_api.dll" };
 
 		for (int pi = 0; pi < ARRAYSIZE(igclPatterns) && !hIGCL; pi++)
 		{
