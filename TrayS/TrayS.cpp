@@ -701,26 +701,6 @@ void LoadTemperatureDLL()
 #ifdef _DEBUG
 	{
 
-	// 加载 OpenHardwareMonitorApi (用于读取 Intel 核显 GPU 温度)
-	hOHMA = LoadLibrary(L"OpenHardwareMonitorApi.dll");
-	if (hOHMA)
-	{
-		GetTemperature = (pfnGetTemperature)GetProcAddress(hOHMA, "GetTemperature");
-		if (!GetTemperature)
-		{
-			FreeLibrary(hOHMA);
-			hOHMA = NULL;
-		}
-	}
-#ifdef _DEBUG
-	{
-		WCHAR dbg[128];
-		swprintf_s(dbg, ARRAYSIZE(dbg),
-			L"[TEMP-INIT] OHM: %s (err=%d)\n",
-			hOHMA ? L"loaded" : L"FAILED", GetLastError());
-		OutputDebugStringW(dbg);
-	}
-#endif
 
 	// 加载 Intel IGCL (Intel Graphics Command Library) 直接读取核显温度
 	// IGCL DLL 随 Intel GPU 驱动安装在 DriverStore 目录, 不在系统 PATH 中
@@ -771,7 +751,7 @@ void LoadTemperatureDLL()
 						OutputDebugStringW(dbg);
 					}
 #endif
-					hIGCL = LoadLibraryW(igclPath);
+					hIGCL = LoadLibraryExW(igclPath, NULL, LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_SYSTEM32);
 				}
 
 				if (hIGCL)
@@ -822,7 +802,7 @@ void LoadTemperatureDLL()
 					OutputDebugStringW(dbg);
 				}
 #endif
-				hIGCL = LoadLibraryW(igclPath);
+				hIGCL = LoadLibraryExW(igclPath, NULL, LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_SYSTEM32);
 				if (hIGCL)
 				{
 					CtlInit = (pfnCtlInit)GetProcAddress(hIGCL, "ctlInit");
@@ -911,7 +891,7 @@ void LoadTemperatureDLL()
 		// GPU DLLs
 		OutputDebugStringW(hNVDLL ? L"[SYS-INFO] nvapi64.dll: loaded\n" : L"[SYS-INFO] nvapi64.dll: NOT loaded\n");
 		OutputDebugStringW(hATIDLL ? L"[SYS-INFO] atiadlxx.dll: loaded\n" : L"[SYS-INFO] atiadlxx.dll: NOT loaded\n");
-		OutputDebugStringW(hOHMA ? L"[SYS-INFO] OHM: loaded\n" : L"[SYS-INFO] OHM: NOT loaded\n");
+
 		OutputDebugStringW(hIGCL ? L"[SYS-INFO] IGCL: loaded\n" : L"[SYS-INFO] IGCL: NOT loaded\n");
 	}
 #endif
