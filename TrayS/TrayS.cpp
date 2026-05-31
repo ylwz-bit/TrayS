@@ -743,13 +743,28 @@ void LoadTemperatureDLL()
 
 			WIN32_FIND_DATAW findData = {};
 			HANDLE hFind = FindFirstFileW(searchPath, &findData);
-			if (hFind == INVALID_HANDLE_VALUE) continue;
+			if (hFind == INVALID_HANDLE_VALUE)
+			{
+#ifdef _DEBUG
+				swprintf_s(igclPath, MAX_PATH, L"[TEMP-INIT] IGCL: pattern[%d]=%s -> no match", pi, igclPatterns[pi]);
+				OutputDebugStringW(igclPath);
+#endif
+				continue;
+			}
 
 			do {
 				for (int di = 0; di < ARRAYSIZE(igclDllNames) && !hIGCL; di++)
 				{
 					swprintf_s(igclPath, MAX_PATH, L"%s\\DriverStore\\FileRepository\\%s\\%s",
 						sysDir, findData.cFileName, igclDllNames[di]);
+#ifdef _DEBUG
+					{
+						WCHAR dbg[512];
+						swprintf_s(dbg, ARRAYSIZE(dbg), L"[TEMP-INIT] IGCL: try load [%s] from dir [%s]",
+							igclDllNames[di], findData.cFileName);
+						OutputDebugStringW(dbg);
+					}
+#endif
 					hIGCL = LoadLibraryW(igclPath);
 				}
 
@@ -775,6 +790,13 @@ void LoadTemperatureDLL()
 			for (int di = 0; di < ARRAYSIZE(igclDllNames) && !hIGCL; di++)
 			{
 				swprintf_s(igclPath, MAX_PATH, L"%s\\%s", sysDir, igclDllNames[di]);
+#ifdef _DEBUG
+				{
+					WCHAR dbg[512];
+					swprintf_s(dbg, ARRAYSIZE(dbg), L"[TEMP-INIT] IGCL: try System32 [%s]", igclDllNames[di]);
+					OutputDebugStringW(dbg);
+				}
+#endif
 				hIGCL = LoadLibraryW(igclPath);
 				if (hIGCL)
 				{
