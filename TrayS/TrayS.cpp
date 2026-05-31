@@ -723,32 +723,33 @@ void LoadTemperatureDLL()
 	// IGCL DLL 随 Intel GPU 驱动安装在 DriverStore 目录, 不在系统 PATH 中
 	{
 		WCHAR igclPath[MAX_PATH] = {};
-		WIN32_FIND_DATAW findData = {};
+		WCHAR sysDir[MAX_PATH];
+		GetSystemDirectoryW(sysDir, MAX_PATH);
 
-		// 搜索 Intel 驱动存储目录: iigd_*.inf_amd64_*
-		WCHAR searchPath[MAX_PATH];
-		GetSystemDirectoryW(searchPath, MAX_PATH);
-		wcscat_s(searchPath, L"\\DriverStore\\FileRepository\\iigd_*.inf_amd64_*");
+		// 尝试多种 DriverStore 目录模式
+		const wchar_t* igclPatterns[] = {
+			L"iigd_*.inf_amd64_*",
+			L"igdlh*.inf_amd64_*",
+			L"igclh*.inf_amd64_*",
+			L"iigd_dch*.inf_amd64_*",
+			L"iigd_ext*.inf_amd64_*",
+		};
+		const wchar_t* igclDllNames[] = { L"igdcl_api.dll", L"ctl_api.dll" };
 
-		HANDLE hFind = FindFirstFileW(searchPath, &findData);
-		if (hFind != INVALID_HANDLE_VALUE)
+		for (int pi = 0; pi < ARRAYSIZE(igclPatterns) && !hIGCL; pi++)
 		{
-			do {
-				// 尝试加载 igdcl_api.dll
-				swprintf_s(igclPath, MAX_PATH, L"%s\\DriverStore\\FileRepository\\%s\\igdcl_api.dll",
-					L"", findData.cFileName);
-				// 修正: 使用完整路径
-				WCHAR sysDir[MAX_PATH];
-				GetSystemDirectoryW(sysDir, MAX_PATH);
-				swprintf_s(igclPath, MAX_PATH, L"%s\\DriverStore\\FileRepository\\%s\\igdcl_api.dll",
-					sysDir, findData.cFileName);
-				hIGCL = LoadLibraryW(igclPath);
+			WCHAR searchPath[MAX_PATH];
+			swprintf_s(searchPath, MAX_PATH, L"%s\\DriverStore\\FileRepository\\%s", sysDir, igclPatterns[pi]);
 
-				if (!hIGCL)
+			WIN32_FIND_DATAW findData = {};
+			HANDLE hFind = FindFirstFileW(searchPath, &findData);
+			if (hFind == INVALID_HANDLE_VALUE) continue;
+
+			do {
+				for (int di = 0; di < ARRAYSIZE(igclDllNames) && !hIGCL; di++)
 				{
-					// 也尝试 ctl_api.dll
-					swprintf_s(igclPath, MAX_PATH, L"%s\\DriverStore\\FileRepository\\%s\\ctl_api.dll",
-						sysDir, findData.cFileName);
+					swprintf_s(igclPath, MAX_PATH, L"%s\\DriverStore\\FileRepository\\%s\\%s",
+						sysDir, findData.cFileName, igclDllNames[di]);
 					hIGCL = LoadLibraryW(igclPath);
 				}
 
@@ -766,6 +767,28 @@ void LoadTemperatureDLL()
 				}
 			} while (!hIGCL && FindNextFileW(hFind, &findData));
 			FindClose(hFind);
+		}
+
+		// 最后尝试从 System32 直接加载
+		if (!hIGCL)
+		{
+			for (int di = 0; di < ARRAYSIZE(igclDllNames) && !hIGCL; di++)
+			{
+				swprintf_s(igclPath, MAX_PATH, L"%s\\%s", sysDir, igclDllNames[di]);
+				hIGCL = LoadLibraryW(igclPath);
+				if (hIGCL)
+				{
+					CtlInit = (pfnCtlInit)GetProcAddress(hIGCL, "ctlInit");
+					CtlClose = (pfnCtlClose)GetProcAddress(hIGCL, "ctlClose");
+					CtlEnumDevices = (pfnCtlEnumDevices)GetProcAddress(hIGCL, "ctlEnumerateDevices");
+					CtlGetTemperature = (pfnCtlGetTemperature)GetProcAddress(hIGCL, "ctlGetTemperature");
+					if (!CtlInit || !CtlGetTemperature)
+					{
+						FreeLibrary(hIGCL);
+						hIGCL = NULL;
+					}
+				}
+			}
 		}
 
 		if (hIGCL && CtlInit)
