@@ -7,6 +7,9 @@
 #endif
 
 #include "framework.h"
+#include <wbemidl.h>
+#include <comdef.h>
+#pragma comment(lib, "wbemuuid.lib")
 #include "TrayS.h"
 #include <intrin.h>
 COLORREF oPixelColor;
@@ -1538,6 +1541,71 @@ DWORD WINAPI GetDataThreadProc(PVOID pParam)//获取温度占用硬盘线程
 						OutputDebugStringW(dbg);
 					}
 #endif
+					// WMI 查询热区温度 (无需外部 DLL)
+					if (TrayData->iTemperature2 == 0)
+					{
+						static IWbemServices* pWmiSvc = NULL;
+						static int wmiInit = 0;
+						if (!wmiInit)
+						{
+							wmiInit = 1;
+							IWbemLocator* pLoc = NULL;
+							HRESULT hr = CoCreateInstance(CLSID_WbemLocator, 0, CLSCTX_INPROC_SERVER,
+								IID_IWbemLocator, (LPVOID*)&pLoc);
+							if (SUCCEEDED(hr))
+							{
+								hr = pLoc->ConnectServer(
+									_bstr_t(L"ROOT\\WMI"), NULL, NULL, 0, 0, 0, 0, &pWmiSvc);
+								if (SUCCEEDED(hr))
+									CoSetProxyBlanket(pWmiSvc, RPC_C_AUTHN_WINNT, RPC_C_AUTHZ_NONE,
+										NULL, RPC_C_AUTHN_LEVEL_CALL, RPC_C_IMP_LEVEL_IMPERSONATE,
+										NULL, EOAC_NONE);
+								else
+									pWmiSvc = NULL;
+								pLoc->Release();
+							}
+						}
+						if (pWmiSvc)
+						{
+							IEnumWbemClassObject* pEnum = NULL;
+							HRESULT hr = pWmiSvc->ExecQuery(
+								_bstr_t("WQL"),
+								_bstr_t("SELECT * FROM MSAcpi_ThermalZoneTemperature"),
+								WBEM_FLAG_FORWARD_ONLY | WBEM_FLAG_RETURN_IMMEDIATELY,
+								NULL, &pEnum);
+							if (SUCCEEDED(hr))
+							{
+								IWbemClassObject* pObj = NULL;
+								ULONG ret = 0;
+								while (pEnum->Next(WBEM_INFINITE, 1, &pObj, &ret) == S_OK)
+								{
+									VARIANT vtTemp;
+									pObj->Get(L"CurrentTemperature", 0, &vtTemp, 0, 0);
+									if (vtTemp.vt != VT_NULL)
+									{
+										int tempC = (int)(vtTemp.lVal / 10) - 273;
+										if (tempC > 0 && tempC < 150)
+										{
+											TrayData->iTemperature2 = tempC;
+#ifdef _DEBUG
+											{
+												WCHAR dbg[128];
+												swprintf_s(dbg, ARRAYSIZE(dbg),
+													L"[TEMP-GPU] source=WMI temp=%d (raw=%d)",
+													tempC, vtTemp.lVal);
+												OutputDebugStringW(dbg);
+											}
+#endif
+										}
+									}
+									VariantClear(&vtTemp);
+									pObj->Release();
+									if (TrayData->iTemperature2 > 0) break;
+								}
+								pEnum->Release();
+							}
+						}
+					}
 					}
 #ifdef _DEBUG
 					else
