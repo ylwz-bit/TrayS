@@ -702,6 +702,40 @@ void LoadTemperatureDLL()
 	{
 
 
+	// 加载 OpenHardwareMonitorApi (用于读取 Intel 核显 GPU 温度)
+	// 采用 1.3.9 风格: 初始化时测试一次, 失败则卸载
+	hOHMA = LoadLibrary(L"OpenHardwareMonitorApi.dll");
+	if (hOHMA)
+	{
+		GetTemperature = (pfnGetTemperature)GetProcAddress(hOHMA, "GetTemperature");
+		if (GetTemperature)
+		{
+			float fCpu = -1, fGpu = -1, fCpuPkg = -1;
+			GetTemperature(&fCpu, &fGpu, NULL, NULL, -1, &fCpuPkg);
+			if (fCpu == -1 && fGpu == -1)
+			{
+				// OHM 无法读取任何温度, 卸载
+				FreeLibrary(hOHMA);
+				hOHMA = NULL;
+				GetTemperature = NULL;
+			}
+		}
+		else
+		{
+			FreeLibrary(hOHMA);
+			hOHMA = NULL;
+		}
+	}
+#ifdef _DEBUG
+	{
+		WCHAR dbg[128];
+		swprintf_s(dbg, ARRAYSIZE(dbg),
+			L"[TEMP-INIT] OHM: %s (err=%d)\n",
+			hOHMA ? L"loaded" : L"FAILED", GetLastError());
+		OutputDebugStringW(dbg);
+	}
+#endif
+
 	// 加载 Intel IGCL (Intel Graphics Command Library) 直接读取核显温度
 	// IGCL DLL 随 Intel GPU 驱动安装在 DriverStore 目录, 不在系统 PATH 中
 	{
@@ -892,6 +926,7 @@ void LoadTemperatureDLL()
 		OutputDebugStringW(hNVDLL ? L"[SYS-INFO] nvapi64.dll: loaded\n" : L"[SYS-INFO] nvapi64.dll: NOT loaded\n");
 		OutputDebugStringW(hATIDLL ? L"[SYS-INFO] atiadlxx.dll: loaded\n" : L"[SYS-INFO] atiadlxx.dll: NOT loaded\n");
 
+		OutputDebugStringW(hOHMA ? L"[SYS-INFO] OHM: loaded\n" : L"[SYS-INFO] OHM: NOT loaded\n");
 		OutputDebugStringW(hIGCL ? L"[SYS-INFO] IGCL: loaded\n" : L"[SYS-INFO] IGCL: NOT loaded\n");
 	}
 #endif
@@ -1521,6 +1556,25 @@ DWORD WINAPI GetDataThreadProc(PVOID pParam)//获取温度占用硬盘线程
 						OutputDebugStringW(dbg);
 					}
 #endif
+					// OpenHardwareMonitorApi 读取 Intel 核显温度
+					if (TrayData->iTemperature2 == 0 && hOHMA && GetTemperature)
+					{
+						float fGpu = -1;
+						float fCpuPkg = -1;
+						GetTemperature(NULL, &fGpu, NULL, NULL, -1, &fCpuPkg);
+						if (fGpu > 0)
+							TrayData->iTemperature2 = (int)fGpu;
+#ifdef _DEBUG
+						{
+							WCHAR dbg[128];
+							const wchar_t* src = (fGpu > 0) ? L"OHM-GPU" : L"OHM-none";
+							swprintf_s(dbg, ARRAYSIZE(dbg),
+								L"[TEMP-GPU] source=%s temp=%d (fGpu=%.0f)\n",
+								src, TrayData->iTemperature2, fGpu);
+							OutputDebugStringW(dbg);
+						}
+#endif
+					}
 					// WMI 查询热区温度 (无需外部 DLL)
 					if (TrayData->iTemperature2 == 0)
 					{
