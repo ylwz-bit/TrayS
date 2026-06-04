@@ -537,7 +537,17 @@ WCHAR oldDisk=L'\0';
 int nDisk = -1;
 int GetCpuTemp(DWORD Core)
 {
-	if (hOHMA)
+	// 优先使用 PawnIO 读取 CPU 温度
+	if (bPawnIoReady && g_pPawnIo)
+	{
+		int temp = PawnIo_GetCpuTemp(g_pPawnIo, Core);
+		if (temp > 0 && temp < 150)
+			return temp;
+	}
+	// 兜底使用 OpenHardwareMonitorApi (LibreHardwareMonitor)
+	HMODULE hOHMA_local = hOHMA;
+	pfnGetTemperature pfnTemp = GetTemperature;
+	if (hOHMA_local && pfnTemp)
 	{
 		float fCpu,fHdd,fGpu,fCpuPackge;
 		int n = -1;
@@ -545,7 +555,7 @@ int GetCpuTemp(DWORD Core)
 		{
 			n=GetPhysicalDriveFromPartitionLetter(TraySave.szDisk);
 		}
-		GetTemperature(&fCpu,&fGpu,NULL,&fHdd,n,&fCpuPackge);
+		pfnTemp(&fCpu,&fGpu,NULL,&fHdd,n,&fCpuPackge);
 		TrayData->iHddTemperature = (int)fHdd;
 		if (fGpu != -1 && fGpu != 0)
 			TrayData->iTemperature2 = (int)fGpu;
@@ -556,6 +566,9 @@ int GetCpuTemp(DWORD Core)
 //////////////////////////////////////////////////载入温度DLL
 void LoadTemperatureDLL()
 {
+	// 初始化 PawnIO 安全驱动
+	g_pPawnIo = PawnIo_Init();
+	bPawnIoReady = (g_pPawnIo != NULL);
 	hOHMA = LoadLibrary(L"OpenHardwareMonitorApi.dll");
 	if (hOHMA)
 	{
@@ -643,6 +656,10 @@ void LoadTemperatureDLL()
 ///////////////////////////////////释放温度DLL
 void FreeTemperatureDLL()
 {
+	if (g_pPawnIo)
+		PawnIo_Free(g_pPawnIo);
+	g_pPawnIo = NULL;
+	bPawnIoReady = FALSE;
 	if (hATIDLL)
 	{
 		ADL_Main_Control_Destroy();
@@ -1158,11 +1175,11 @@ DWORD WINAPI GetDataThreadProc(PVOID pParam)//获取温度占用硬盘线程
 			}
 			if (TraySave.bMonitorTemperature)
 			{
-				if (hOHMA)
+				if ((bPawnIoReady || hOHMA))
 				{
 					TrayData->iTemperature1 = GetCpuTemp(1);
 				}
-				if (!hOHMA)
+				if (!(bPawnIoReady || hOHMA))
 				{
 					int iATITemperature = 0;
 					int iNVTemperature = 0;
@@ -1819,7 +1836,7 @@ void SetWH()
 		}
 		wTemperature = tSize.cx + wSpace;
 		mWidth += wTemperature;
-		if (hOHMA)
+		if ((bPawnIoReady || hOHMA))
 			mHeight += wHeight * 2;
 		else
 			mHeight += wHeight;
@@ -1844,7 +1861,7 @@ void SetWH()
 			::GetTextExtentPoint(mdc, sz, lstrlen(sz), &tSize);
 		}
 		wDisk = tSize.cx + wSpace;
-		if (hOHMA&&TraySave.bMonitorTemperature)
+		if ((bPawnIoReady || hOHMA)&&TraySave.bMonitorTemperature)
 		{
 			if (TraySave.bMonitorFloatVRow && TraySave.bMonitorFloat)
 			{
@@ -3381,9 +3398,9 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 		if (bV)
 		{
 			OffsetRect(&rc, 0, (TraySave.bMonitorTraffic + TraySave.bMonitorUsage + TraySave.bMonitorTemperature) * 2 * wHeight);
-			if (!hOHMA)
+			if (!(bPawnIoReady || hOHMA))
 				OffsetRect(&rc, 0, -wHeight);
-			if (hOHMA && TraySave.bMonitorTemperature)
+			if ((bPawnIoReady || hOHMA) && TraySave.bMonitorTemperature)
 				rc.bottom += wHeight * 2;
 		}
 		else
@@ -3712,7 +3729,7 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 						rgb = TraySave.cMonitorColor[6];
 					SetTextColor(mdc, rgb);
 					/*
-								if(hOHMA)
+								if((bPawnIoReady || hOHMA))
 									swprintf_s(sz, 16, L"%.2d%%", iCPU);
 								else
 					*/
@@ -3743,7 +3760,7 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 						DrawShadowText(mdc, TraySave.szUsageCPU, lstrlen(TraySave.szUsageCPU), &crc, DT_LEFT | DT_VCENTER | DT_SINGLELINE, bColor, bShadow);
 					DrawShadowText(mdc, sz, sLen, &crc, DT_RIGHT | DT_VCENTER | DT_SINGLELINE, bColor, bShadow);
 					/*
-								if(hOHMA)
+								if((bPawnIoReady || hOHMA))
 									swprintf_s(sz, 16, L"%.2d%%", MemoryStatusEx.dwMemoryLoad);
 								else
 					*/
@@ -3787,9 +3804,9 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 						crc.bottom /= 2;
 						InflateRect(&crc, -(wSpace / 2), 0);
 					}
-					if (hOHMA)
+					if ((bPawnIoReady || hOHMA))
 					{
-						if ((hATIDLL != NULL || hNVDLL != NULL )&& TrayData->iTemperature1 == 0 && TraySave.bMonitorDisk&&!hOHMA)
+						if ((hATIDLL != NULL || hNVDLL != NULL )&& TrayData->iTemperature1 == 0 && TraySave.bMonitorDisk&&!(bPawnIoReady || hOHMA))
 							TrayData->iTemperature1 = TrayData->disktime;
 						if (TrayData->iTemperature1 <= TraySave.dNumValues[2])
 							rgb = TraySave.cMonitorColor[4];
@@ -3798,7 +3815,7 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 						else
 							rgb = TraySave.cMonitorColor[6];
 						SetTextColor(mdc, rgb);
-						if ((hATIDLL != NULL || hNVDLL != NULL )&& TrayData->iTemperature1 == TrayData->disktime && TraySave.bMonitorDisk&&!hOHMA)
+						if ((hATIDLL != NULL || hNVDLL != NULL )&& TrayData->iTemperature1 == TrayData->disktime && TraySave.bMonitorDisk&&!(bPawnIoReady || hOHMA))
 						{
 							if (TraySave.iMonitorSimple == 0)
 							{
@@ -3824,7 +3841,7 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 						}
 						DrawShadowText(mdc, sz, lstrlen(sz), &crc, DT_RIGHT | DT_VCENTER | DT_SINGLELINE, bColor, bShadow);
 					}
-					if (hOHMA)
+					if ((bPawnIoReady || hOHMA))
 					{
 						if (VTray)
 							OffsetRect(&crc, 0, wHeight);
@@ -3840,7 +3857,7 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 						else
 							crc.bottom += (crc.bottom - crc.top);
 					}
-					if (hATIDLL == NULL && hNVDLL == NULL && TraySave.bMonitorDisk&&!hOHMA&&TrayData->disktime!=0)//如果没有独立显卡则显示磁盘使用率
+					if (hATIDLL == NULL && hNVDLL == NULL && TraySave.bMonitorDisk&&!(bPawnIoReady || hOHMA)&&TrayData->disktime!=0)//如果没有独立显卡则显示磁盘使用率
 						TrayData->iTemperature2 = TrayData->disktime;
 					if (TrayData->iTemperature2 <= TraySave.dNumValues[2])
 						rgb = TraySave.cMonitorColor[4];
@@ -3849,7 +3866,7 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 					else
 						rgb = TraySave.cMonitorColor[6];
 					SetTextColor(mdc, rgb);
-					if (hATIDLL == NULL && hNVDLL == NULL && TraySave.bMonitorDisk&&!hOHMA)
+					if (hATIDLL == NULL && hNVDLL == NULL && TraySave.bMonitorDisk&&!(bPawnIoReady || hOHMA))
 					{
 						if (TraySave.iMonitorSimple == 0)
 						{
@@ -3886,13 +3903,13 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 						if (TraySave.bMonitorTemperature)
 						{
 							crc.top += wHeight;
-							if (hOHMA)
+							if ((bPawnIoReady || hOHMA))
 								crc.top += wHeight;
 						}
 						if (TraySave.bMonitorUsage)
 							crc.top += wHeight * 2;
 						crc.bottom = crc.top + wHeight;
-						if (hOHMA && TraySave.bMonitorTemperature)
+						if ((bPawnIoReady || hOHMA) && TraySave.bMonitorTemperature)
 						{
 							if (TrayData->iHddTemperature <= TraySave.dNumValues[2])
 								rgb = TraySave.cMonitorColor[4];
@@ -3946,7 +3963,7 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 						crc.left = crc.left + wTraffic + wTemperature + wUsage;
 						crc.right = crc.left + wDisk;
 						crc.bottom /= 2;
-						if (hOHMA&&TraySave.bMonitorTemperature)
+						if ((bPawnIoReady || hOHMA)&&TraySave.bMonitorTemperature)
 						{
 							crc.right -= (wDisk-wTemperature);
 							InflateRect(&crc, -(wSpace / 2), 0);
@@ -4017,14 +4034,14 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 						if (TraySave.bMonitorTemperature)
 						{
 							crc.top += wHeight;
-							if (hOHMA)
+							if ((bPawnIoReady || hOHMA))
 								crc.top += wHeight;
 						}
 						if (TraySave.bMonitorUsage)
 							crc.top += wHeight * 2;
 						if (TraySave.bMonitorDisk)
 						{
-							if(hOHMA && TraySave.bMonitorTemperature)
+							if((bPawnIoReady || hOHMA) && TraySave.bMonitorTemperature)
 								crc.top += wHeight * 2;
 							crc.top += wHeight * 2;
 						}
@@ -4070,14 +4087,14 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 						if (TraySave.bMonitorTemperature)
 						{
 							crc.top += wHeight;
-							if (hOHMA)
+							if ((bPawnIoReady || hOHMA))
 								crc.top += wHeight;
 						}
 						if (TraySave.bMonitorUsage)
 							crc.top += wHeight * 2;
 						if (TraySave.bMonitorDisk)
 						{
-							if (hOHMA && TraySave.bMonitorTemperature)
+							if ((bPawnIoReady || hOHMA) && TraySave.bMonitorTemperature)
 								crc.top += wHeight * 2;
 							crc.top += wHeight * 2;
 						}

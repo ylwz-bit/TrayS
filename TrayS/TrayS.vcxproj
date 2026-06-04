@@ -221,12 +221,14 @@
     <ClInclude Include="adl_sdk.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="Function.h" />
+    <ClInclude Include="PawnIo.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="TrayS.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Function.cpp" />
+    <ClCompile Include="PawnIo.cpp" />
     <ClCompile Include="TrayS.cpp" />
   </ItemGroup>
   <ItemGroup>

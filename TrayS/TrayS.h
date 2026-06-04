@@ -372,7 +372,10 @@ typedef ULONG(WINAPI* pfnAccessibleChildren)(_In_ IAccessible* paccContainer, _I
 pfnAccessibleObjectFromWindow AccessibleObjectFromWindowT;
 pfnAccessibleChildren AccessibleChildrenT;
 
-/////////////////////////////////////////////////CPU温度(OHM/PawnIO)
+/////////////////////////////////////////////////CPU温度(PawnIO+OHM)
+#include "PawnIo.h"
+PAWNIO_CTX* g_pPawnIo = NULL;
+BOOL bPawnIoReady = FALSE;
 ////////////////////////////////////////////////ATI显卡温度
 // Memory allocation function
 void* __stdcall ADL_Main_Memory_Alloc(int iSize)
