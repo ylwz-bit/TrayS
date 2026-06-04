@@ -446,8 +446,6 @@ void CloseTaskBar()
 		DestroyWindow(hTaskBar);
 	if (IsWindow(hTaskTips))
 		DestroyWindow(hTaskTips);
-	if (IsWindow(hPrice))
-		DestroyWindow(hPrice);
 	if(IsWindow(hTime))
 		DestroyWindow(hTime);	
 }
@@ -737,7 +735,6 @@ void OpenSetting()
 	CheckDlgButton(hSetting, IDC_CHECK_TEMPERATURE, TraySave.bMonitorTemperature);
 	CheckDlgButton(hSetting, IDC_CHECK_USAGE, TraySave.bMonitorUsage);
 	CheckDlgButton(hSetting, IDC_CHECK_DISK, TraySave.bMonitorDisk);
-	CheckDlgButton(hSetting, IDC_CHECK_PRICE, TraySave.bMonitorPrice);
 	CheckDlgButton(hSetting, IDC_CHECK_SOUND, TraySave.bSound);
 	CheckDlgButton(hSetting, IDC_CHECK_MONITOR_PDH, TraySave.bMonitorPDH);
 	CheckDlgButton(hSetting, IDC_CHECK_MONITOR_SIMPLE, TraySave.iMonitorSimple);
@@ -796,8 +793,6 @@ void OpenSetting()
 	oldColorButtonPoroc = (WNDPROC)SetWindowLongPtr(GetDlgItem(hSetting, IDC_BUTTON_COLOR_LOW), GWLP_WNDPROC, (LONG_PTR)ColorButtonProc);
 	oldColorButtonPoroc = (WNDPROC)SetWindowLongPtr(GetDlgItem(hSetting, IDC_BUTTON_COLOR_MEDUIM), GWLP_WNDPROC, (LONG_PTR)ColorButtonProc);
 	oldColorButtonPoroc = (WNDPROC)SetWindowLongPtr(GetDlgItem(hSetting, IDC_BUTTON_COLOR_HIGH), GWLP_WNDPROC, (LONG_PTR)ColorButtonProc);	
-	oldColorButtonPoroc = (WNDPROC)SetWindowLongPtr(GetDlgItem(hSetting, IDC_BUTTON_COLOR_PRICE_LOW), GWLP_WNDPROC, (LONG_PTR)ColorButtonProc);
-	oldColorButtonPoroc = (WNDPROC)SetWindowLongPtr(GetDlgItem(hSetting, IDC_BUTTON_COLOR_PRICE_HIGH), GWLP_WNDPROC, (LONG_PTR)ColorButtonProc);
 	ShowWindow(hSetting, SW_SHOW);
 	UpdateWindow(hSetting);
 	SetForegroundWindow(hSetting);
@@ -1068,9 +1063,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 			}
 //			WaitForSingleObject(hThread, INFINITE);
 			TerminateThread(hGetDataThread, 0);
-			TerminateThread(hPriceThread, 0);
 			CloseHandle(hGetDataThread);
-			CloseHandle(hPriceThread);
 //			CloseHandle(hMainThread);
 			if (IsWindow(hSetting))
 				DestroyWindow(hSetting);
@@ -1104,43 +1097,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 	if (hMap)
 		CloseHandle(hMap);
 	ExitProcess((UINT)0);
-}
-DWORD WINAPI GetPriceThreadProc(PVOID pParam)//获取行情线程
-{
-	while (!bRealClose)
-	{
-		DWORD dStart = GetTickCount();
-		if (TraySave.bMonitorPrice)
-		{
-			if (TraySave.iPriceInterface[0] == 0)
-				GetOKXPrice(TraySave.szPriceName1, TraySave.szOKXWeb, &TrayData->fLastPrice1, &TrayData->fOpenPrice1, TrayData->szLastPrice1, NULL);
-			else
-				GetSinaPrice(TraySave.szPriceName1, &TrayData->fLastPrice1, &TrayData->fOpenPrice1, TrayData->szLastPrice1, NULL);
-			TrayData->szLastPrice1[7] = L'\0';
-			if (TraySave.iPriceInterface[1] == 0)
-				GetOKXPrice(TraySave.szPriceName2, TraySave.szOKXWeb, &TrayData->fLastPrice2, &TrayData->fOpenPrice2, TrayData->szLastPrice2, NULL);
-			else
-				GetSinaPrice(TraySave.szPriceName2, &TrayData->fLastPrice2, &TrayData->fOpenPrice2, TrayData->szLastPrice2, NULL);
-			TrayData->szLastPrice2[7] = L'\0';
-			if (TraySave.bTwoFour)
-			{
-				if (TraySave.iPriceInterface[2] == 0)
-					GetOKXPrice(TraySave.szPriceName3, TraySave.szOKXWeb, &TrayData->fLastPrice3, &TrayData->fOpenPrice3, TrayData->szLastPrice3, NULL);
-				else
-					GetSinaPrice(TraySave.szPriceName3, &TrayData->fLastPrice3, &TrayData->fOpenPrice3, TrayData->szLastPrice3, NULL);
-				TrayData->szLastPrice3[7] = L'\0';
-				if (TraySave.iPriceInterface[3] == 0)
-					GetOKXPrice(TraySave.szPriceName4, TraySave.szOKXWeb, &TrayData->fLastPrice4, &TrayData->fOpenPrice4, TrayData->szLastPrice4, NULL);
-				else
-					GetSinaPrice(TraySave.szPriceName4, &TrayData->fLastPrice4, &TrayData->fOpenPrice4, TrayData->szLastPrice4, NULL);
-				TrayData->szLastPrice4[7] = L'\0';
-			}
-		}
-		DWORD dTime = GetTickCount() - dStart;
-		if (dTime < 888)
-			Sleep(888 - dTime);
-	}
-	return 0;
 }
 DWORD dwIPSize = 0;
 DWORD dwMISize = 0;
@@ -1487,7 +1443,6 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	SetTimer(hMain, 11, 6000, NULL);//内存释放
 	SetTimer(hMain, 3000, 3000, NULL);//每三秒重新读取系统窗口
 	hGetDataThread = CreateThread(NULL, 0, GetDataThreadProc, 0, 0, 0);
-	hPriceThread = CreateThread(NULL, 0, GetPriceThreadProc, 0, 0, 0);
 	return TRUE;
 }
 BOOL Find(IAccessible* paccParent, int iRole, IAccessible** paccChild)//查找任务图标UI
@@ -1884,24 +1839,6 @@ void SetWH()
 	}
 	else
 		wTime = 0;
-	if (TraySave.bMonitorPrice)
-	{
-		::GetTextExtentPoint(mdc, L"99999.8 8.88%", lstrlen(L"99999.8 8.88%"), &tSize);
-		wPrice = tSize.cx + wSpace;
-		if (TraySave.bTwoFour)
-		{
-			if (TraySave.bMonitorFloatVRow && TraySave.bMonitorFloat)
-			{
-			}
-			else
-				wPrice += wPrice;
-			mHeight += wHeight * 2;
-		}
-		mWidth += wPrice;
-		mHeight += wHeight * 2;
-	}
-	else
-		wPrice = 0;
 //	mWidth += 4;
 //	mHeight += 4;
 	SelectObject(mdc, oldFont);
@@ -1949,8 +1886,6 @@ void AdjustWindowPos()//设置信息窗口位置大小
 				iWidth = wDisk;
 			if (wUsage > iWidth)
 				iWidth = wUsage;
-			if (wPrice > iWidth)
-				iWidth = wPrice;
 			if (TraySave.dMonitorPoint.x + iWidth > ScreenRect.right)
 				TraySave.dMonitorPoint.x = ScreenRect.right - iWidth;
 			if (TraySave.dMonitorPoint.y + mHeight + 8 > ScreenRect.bottom)
@@ -3278,7 +3213,7 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 		}
 		break;
 	case WM_MOUSEMOVE:
-		if (bEvent == FALSE && (TraySave.bMonitorTips||TraySave.bMonitorPrice))
+		if (bEvent == FALSE && (TraySave.bMonitorTips))
 		{
 			SetTrackMouseEvent(hTaskBar, TME_LEAVE | TME_HOVER);
 			bEvent = TRUE;
@@ -3293,37 +3228,12 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 		BOOL bV = FALSE;
 		if (rc.bottom - rc.top > rc.right - rc.left)
 			bV = TRUE;
-		if (TraySave.bMonitorPrice&&((pt.x > rc.right - wPrice&&!bV)||(pt.y>rc.bottom-wHeight*2-(TraySave.bTwoFour*wHeight*2) && bV)))
-		{
-			if (IsWindow(hTaskTips))
-			{
-				if (pProcessTime != NULL)
-				{
-					HeapFree(GetProcessHeap(), 0, pProcessTime);
-					pProcessTime = NULL;
-				}
-				DestroyWindow(hTaskTips);
-			}
-			if (!IsWindow(hPrice))
-			{
-				hPrice = ::CreateDialog(hInst, MAKEINTRESOURCE(IDD_PRICE), NULL, (DLGPROC)PriceProc);
-				if (TraySave.bTwoFour)
-				{
-					RECT rc;
-					GetWindowRect(hPrice, &rc);
-					SetWindowPos(hPrice, HWND_TOPMOST, 0, 0, (rc.right - rc.left) * 2, rc.bottom - rc.top, SWP_NOMOVE);
-				}
-				SendMessage(hPrice, WM_COMMAND, IDC_TWOFOUR, 888);
-			}
-		}
 		else if (!IsWindowVisible(hTaskTips)&&TraySave.bMonitorTips)
 		{
 /*
 			if (s_in_byte == 0)
 				return FALSE;
 */			
-			if (IsWindow(hPrice))
-				DestroyWindow(hPrice);
 			if (!IsWindow(hTaskTips))
 			{
 				hTaskTips = ::CreateDialog(hInst, MAKEINTRESOURCE(IDD_TIPS), NULL, (DLGPROC)TaskTipsProc);
@@ -3503,86 +3413,6 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 			}
 			if (IsWindow(hTaskBar))
 				::InvalidateRect(hTaskBar, NULL, TRUE);
-			if (TraySave.bMonitorPrice)
-			{
-				TrayData->iPriceUpDown[0] = 0;
-				TrayData->iPriceUpDown[1] = 0;
-				if (TrayData->fLastPrice1 != 0)
-				{
-
-					if (TraySave.HighRemind[0] != 0 && TraySave.HighRemind[0] < TrayData->fLastPrice1 && TraySave.bCheckHighRemind[0])
-						TrayData->iPriceUpDown[0] = MB_ICONHAND;
-					if (TraySave.HighRemind[1]!=0&&TraySave.HighRemind[1] < TrayData->fLastPrice1 && TraySave.bCheckHighRemind[1])
-						TrayData->iPriceUpDown[0] = MB_ICONHAND;
-					if (TraySave.HighRemind[2] != 0 && TraySave.HighRemind[2] < TrayData->fLastPrice1 && TraySave.bCheckHighRemind[2])
-						TrayData->iPriceUpDown[0] = MB_ICONHAND;
-					if (TraySave.LowRemind[0] != 0 && TraySave.LowRemind[0] > TrayData->fLastPrice1 && TraySave.bCheckLowRemind[0])
-						TrayData->iPriceUpDown[0] = MB_ICONWARNING;
-					if (TraySave.LowRemind[1] != 0 && TraySave.LowRemind[1] > TrayData->fLastPrice1 && TraySave.bCheckLowRemind[1])
-						TrayData->iPriceUpDown[0] = MB_ICONWARNING;
-					if (TraySave.LowRemind[2] != 0 && TraySave.LowRemind[2] > TrayData->fLastPrice1 && TraySave.bCheckLowRemind[2])
-						TrayData->iPriceUpDown[0] = MB_ICONWARNING;
-					if (TrayData->iPriceUpDown[0] != 0)
-						MessageBeep(TrayData->iPriceUpDown[0]);
-				}
-				if (TrayData->fLastPrice2 != 0)
-				{
-					if (TraySave.HighRemind[3]!=0&&TraySave.HighRemind[3] < TrayData->fLastPrice2 && TraySave.bCheckHighRemind[3])
-						TrayData->iPriceUpDown[1] = MB_ICONHAND;
-					if (TraySave.HighRemind[4] != 0 && TraySave.HighRemind[4] < TrayData->fLastPrice2 && TraySave.bCheckHighRemind[4])
-						TrayData->iPriceUpDown[1] = MB_ICONHAND;
-					if (TraySave.HighRemind[5] != 0 && TraySave.HighRemind[5] < TrayData->fLastPrice2 && TraySave.bCheckHighRemind[5])
-						TrayData->iPriceUpDown[1] = MB_ICONHAND;
-					if (TraySave.LowRemind[3]!=0&&TraySave.LowRemind[3] > TrayData->fLastPrice2 && TraySave.bCheckLowRemind[3])
-						TrayData->iPriceUpDown[1] = MB_ICONWARNING;
-					if (TraySave.LowRemind[4] != 0 && TraySave.LowRemind[4] > TrayData->fLastPrice2 && TraySave.bCheckLowRemind[4])
-						TrayData->iPriceUpDown[1] = MB_ICONWARNING;
-					if (TraySave.LowRemind[5] != 0 && TraySave.LowRemind[5] > TrayData->fLastPrice2 && TraySave.bCheckLowRemind[5])
-						TrayData->iPriceUpDown[1] = MB_ICONWARNING;
-					if (TrayData->iPriceUpDown[1] != 0)
-						MessageBeep(TrayData->iPriceUpDown[1]);
-				}
-				if (TraySave.bTwoFour)
-				{
-					TrayData->iPriceUpDown[2] = 0;
-					TrayData->iPriceUpDown[3] = 0;
-					if (TrayData->fLastPrice3 != 0)
-					{
-
-						if (TraySave.HighRemind[6] != 0 && TraySave.HighRemind[6] < TrayData->fLastPrice3 && TraySave.bCheckHighRemind[6])
-							TrayData->iPriceUpDown[2] = MB_ICONHAND;
-						if (TraySave.HighRemind[7] != 0 && TraySave.HighRemind[7] < TrayData->fLastPrice3 && TraySave.bCheckHighRemind[7])
-							TrayData->iPriceUpDown[2] = MB_ICONHAND;
-						if (TraySave.HighRemind[8] != 0 && TraySave.HighRemind[8] < TrayData->fLastPrice3 && TraySave.bCheckHighRemind[8])
-							TrayData->iPriceUpDown[2] = MB_ICONHAND;
-						if (TraySave.LowRemind[6] != 0 && TraySave.LowRemind[6] > TrayData->fLastPrice3 && TraySave.bCheckLowRemind[6])
-							TrayData->iPriceUpDown[2] = MB_ICONWARNING;
-						if (TraySave.LowRemind[7] != 0 && TraySave.LowRemind[7] > TrayData->fLastPrice3 && TraySave.bCheckLowRemind[7])
-							TrayData->iPriceUpDown[2] = MB_ICONWARNING;
-						if (TraySave.LowRemind[8] != 0 && TraySave.LowRemind[8] > TrayData->fLastPrice3 && TraySave.bCheckLowRemind[8])
-							TrayData->iPriceUpDown[2] = MB_ICONWARNING;
-						if (TrayData->iPriceUpDown[2] != 0)
-							MessageBeep(TrayData->iPriceUpDown[2]);
-					}
-					if (TrayData->fLastPrice4 != 0)
-					{
-						if (TraySave.HighRemind[9] != 0 && TraySave.HighRemind[9] < TrayData->fLastPrice4 && TraySave.bCheckHighRemind[9])
-							TrayData->iPriceUpDown[3] = MB_ICONHAND;
-						if (TraySave.HighRemind[10] != 0 && TraySave.HighRemind[10] < TrayData->fLastPrice4 && TraySave.bCheckHighRemind[10])
-							TrayData->iPriceUpDown[3] = MB_ICONHAND;
-						if (TraySave.HighRemind[11] != 0 && TraySave.HighRemind[11] < TrayData->fLastPrice4 && TraySave.bCheckHighRemind[11])
-							TrayData->iPriceUpDown[3] = MB_ICONHAND;
-						if (TraySave.LowRemind[9] != 0 && TraySave.LowRemind[9] > TrayData->fLastPrice4 && TraySave.bCheckLowRemind[9])
-							TrayData->iPriceUpDown[3] = MB_ICONWARNING;
-						if (TraySave.LowRemind[10] != 0 && TraySave.LowRemind[10] > TrayData->fLastPrice4 && TraySave.bCheckLowRemind[10])
-							TrayData->iPriceUpDown[3] = MB_ICONWARNING;
-						if (TraySave.LowRemind[11] != 0 && TraySave.LowRemind[11] > TrayData->fLastPrice4 && TraySave.bCheckLowRemind[11])
-							TrayData->iPriceUpDown[3] = MB_ICONWARNING;
-						if (TrayData->iPriceUpDown[3] != 0)
-							MessageBeep(TrayData->iPriceUpDown[3]);
-					}
-				}
-			}
 			if (TraySave.bSound)
 			{
 				if (TraySave.bMonitorTraffic)
@@ -3609,7 +3439,6 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 					if (!bFullScreen)
 					{
 
-						if (!KEYDOWN(VK_LBUTTON) && !IsWindow(hTaskTips) && !IsWindow(hPrice))
 						{
 							SendMessage(hTaskBar, WM_MOUSEHOVER, 0, 0);
 						}
@@ -3626,15 +3455,6 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 					{
 						DestroyWindow(hTaskTips);
 					}
-				}
-			}
-			if (TraySave.bMonitorPrice)
-			{
-				if (IsWindow(hPrice))
-				{
-					GetWindowRect(hPrice, &brc);
-					if (!PtInRect(&brc, pt))
-						DestroyWindow(hPrice);
 				}
 			}
 		}
@@ -4077,62 +3897,6 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 				else
 					DrawShadowText(mdc, sz, sLen, &crc, DT_CENTER | DT_VCENTER | DT_SINGLELINE, bColor, bShadow);
 				}
-				if (TraySave.bMonitorPrice)
-				{
-					RECT crc = rc;
-					if (VTray)
-					{
-						if (TraySave.bMonitorTraffic)
-							crc.top = wHeight * 2;
-						if (TraySave.bMonitorTemperature)
-						{
-							crc.top += wHeight;
-							if ((bPawnIoReady || hOHMA))
-								crc.top += wHeight;
-						}
-						if (TraySave.bMonitorUsage)
-							crc.top += wHeight * 2;
-						if (TraySave.bMonitorDisk)
-						{
-							if ((bPawnIoReady || hOHMA) && TraySave.bMonitorTemperature)
-								crc.top += wHeight * 2;
-							crc.top += wHeight * 2;
-						}
-						if(TraySave.bMonitorTime)
-							crc.top += wHeight * 2;
-						crc.bottom = crc.top + wHeight;
-					}
-					else
-					{
-						crc.left = crc.left + wTraffic + wTemperature + wUsage + wDisk + wTime;
-						crc.right = crc.left + wPrice;						
-						crc.bottom /= 2;
-						if (TraySave.bTwoFour)
-						{
-							crc.right -= wPrice / 2;
-						}
-						InflateRect(&crc, -(wSpace / 2), 0);
-					}
-					DrawPrice(mdc, &crc, TrayData->fLastPrice1, TrayData->fOpenPrice1, TrayData->szLastPrice1, TrayData->iPriceUpDown[0]);
-					if (VTray)
-						OffsetRect(&crc, 0, wHeight);
-					else
-						OffsetRect(&crc, 0, crc.bottom);
-					DrawPrice(mdc, &crc, TrayData->fLastPrice2, TrayData->fOpenPrice2, TrayData->szLastPrice2, TrayData->iPriceUpDown[1]);
-					if (TraySave.bTwoFour)
-					{
-						if (VTray)
-							OffsetRect(&crc, 0, wHeight);
-						else
-							OffsetRect(&crc, wPrice/2, -(crc.bottom-crc.top));
-						DrawPrice(mdc, &crc, TrayData->fLastPrice3, TrayData->fOpenPrice3, TrayData->szLastPrice3, TrayData->iPriceUpDown[2]);
-						if (VTray)
-							OffsetRect(&crc, 0, wHeight);
-						else
-							OffsetRect(&crc, 0, crc.bottom);
-						DrawPrice(mdc, &crc, TrayData->fLastPrice4, TrayData->fOpenPrice4, TrayData->szLastPrice4, TrayData->iPriceUpDown[3]);
-					}
-				}
 				SelectObject(mdc, oldFont);
 			}
 			//		GetClientRect(hDlg, &rc);
@@ -4181,56 +3945,6 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 	break;
 	}
 	return FALSE;
-}
-void DrawPrice(HDC mdc,LPRECT crc,float fLast,float fOpen,WCHAR *szLast,int iPriceUpDown)
-{
-	WCHAR sz[64];
-	int iLast = (int)(fLast * 100);
-	int pf;
-	float f = (fLast / fOpen) - 1;
-	if (f >= 10)
-	{
-		pf = (int)(f * 100);
-		wsprintf(sz, L"%2d%%", pf);
-	}
-	else if (f < 0)
-	{
-		f = -f;
-		SetTextColor(mdc, TraySave.cPriceColor[0]);
-	}
-	else
-	{
-		SetTextColor(mdc, TraySave.cPriceColor[1]);
-	}
-	if (f >= 1)
-	{
-		pf = (int)(f * 100);
-		wsprintf(sz, L"%2d%%", pf);
-	}
-	else if (f >= 0.1)
-	{
-		pf = (int)(f * 1000);
-		wsprintf(sz, L"%2d.%.1d%%", pf / 10, pf % 10);
-	}
-	else
-	{
-		if (fLast == 0)
-			pf = 10000;
-		else
-			pf = (int)(f * 10000);
-		wsprintf(sz, L"%2d.%.2d%%", pf / 100, pf % 100);
-	}
-	int sLen = lstrlen(sz);
-	DrawShadowText(mdc, sz, sLen, crc, DT_RIGHT | DT_VCENTER | DT_SINGLELINE, bColor, bShadow);
-	if (iPriceUpDown != 0)
-	{
-		if (iPriceUpDown == MB_ICONHAND)
-			SetTextColor(mdc, TraySave.cPriceColor[3]);
-		else
-			SetTextColor(mdc, TraySave.cPriceColor[2]);
-	}
-	DrawShadowText(mdc, szLast, lstrlen(szLast), crc, DT_LEFT | DT_VCENTER | DT_SINGLELINE, bColor, bShadow);
-
 }
 INT_PTR CALLBACK MainProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)//主窗口过程
 {
@@ -4684,13 +4398,6 @@ INT_PTR CALLBACK SettingProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 			SetWH();
 			AdjustWindowPos();
 		}
-		else if (LOWORD(wParam) == IDC_CHECK_PRICE)
-		{
-			TraySave.bMonitorPrice = IsDlgButtonChecked(hDlg, IDC_CHECK_PRICE);			
-			WriteReg();
-			SetWH();
-			AdjustWindowPos();
-		}
 		else if (LOWORD(wParam) == IDC_CHECK_MONITOR_PDH)
 		{
 			TraySave.bMonitorPDH = IsDlgButtonChecked(hDlg, IDC_CHECK_MONITOR_PDH);
@@ -4852,7 +4559,7 @@ INT_PTR CALLBACK SettingProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 				FreeLibrary(hComdlg32);
 			}
 		}
-		else if (LOWORD(wParam) == IDC_BUTTON_COLOR || (LOWORD(wParam) >= IDC_BUTTON_COLOR_BACKGROUND && LOWORD(wParam) <= IDC_BUTTON_COLOR_PRICE_HIGH))
+		else if (LOWORD(wParam) == IDC_BUTTON_COLOR || (LOWORD(wParam) >= IDC_BUTTON_COLOR_BACKGROUND && LOWORD(wParam) <= IDC_BUTTON_COLOR_HIGH))
 		{
 			CHOOSECOLOR stChooseColor;
 			stChooseColor.lStructSize = sizeof(CHOOSECOLOR);
@@ -4864,16 +4571,8 @@ INT_PTR CALLBACK SettingProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 			}
 			else
 			{
-				if (LOWORD(wParam) == IDC_BUTTON_COLOR_PRICE_HIGH || LOWORD(wParam) == IDC_BUTTON_COLOR_PRICE_LOW)
-				{
-					stChooseColor.rgbResult = TraySave.cPriceColor[LOWORD(wParam) - IDC_BUTTON_COLOR_PRICE_LOW];
-					stChooseColor.lpCustColors = TraySave.cPriceColor;
-				}
-				else
-				{
-					stChooseColor.rgbResult = TraySave.cMonitorColor[LOWORD(wParam) - IDC_BUTTON_COLOR_BACKGROUND];
-					stChooseColor.lpCustColors = TraySave.cMonitorColor;
-				}
+				stChooseColor.rgbResult = TraySave.cMonitorColor[LOWORD(wParam) - IDC_BUTTON_COLOR_BACKGROUND];
+				stChooseColor.lpCustColors = TraySave.cMonitorColor;
 			}
 			stChooseColor.Flags = CC_RGBINIT | CC_FULLOPEN;
 			stChooseColor.lCustData = 0;
@@ -4897,10 +4596,7 @@ INT_PTR CALLBACK SettingProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 						}
 						else
 						{
-							if (LOWORD(wParam) == IDC_BUTTON_COLOR_PRICE_HIGH || LOWORD(wParam) == IDC_BUTTON_COLOR_PRICE_LOW)
-								TraySave.cPriceColor[LOWORD(wParam - IDC_BUTTON_COLOR_PRICE_LOW)] = stChooseColor.rgbResult;
-							else
-								TraySave.cMonitorColor[LOWORD(wParam - IDC_BUTTON_COLOR_BACKGROUND)] = stChooseColor.rgbResult;
+							TraySave.cMonitorColor[LOWORD(wParam - IDC_BUTTON_COLOR_BACKGROUND)] = stChooseColor.rgbResult;
 							if (TraySave.cMonitorColor[0] == 0 || TraySave.cMonitorColor[0] == RGB(0, 0, 1))
 							{
 								TraySave.cMonitorColor[0] = RGB(0, 0, 1);
@@ -4927,7 +4623,7 @@ INT_PTR CALLBACK SettingProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 	}
 	return (INT_PTR)FALSE;
 }
-INT_PTR CALLBACK ColorButtonProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)//颜色按钮控件过程
+INT_PTR CALLBACK ColorButtonProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	switch (message)
 	{
@@ -4939,13 +4635,8 @@ INT_PTR CALLBACK ColorButtonProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM 
 		GetClientRect(hWnd, &rc);
 		HBRUSH hb;
 		int id = GetDlgCtrlID(hWnd);
-		if (id >= IDC_BUTTON_COLOR_BACKGROUND && id <= IDC_BUTTON_COLOR_PRICE_HIGH)
-		{
-			if(id>=IDC_BUTTON_COLOR_PRICE_LOW)
-				hb = CreateSolidBrush(TraySave.cPriceColor[id - IDC_BUTTON_COLOR_PRICE_LOW]);
-			else
-				hb = CreateSolidBrush(TraySave.cMonitorColor[id - IDC_BUTTON_COLOR_BACKGROUND]);
-		}
+		if (id >= IDC_BUTTON_COLOR_BACKGROUND && id <= IDC_BUTTON_COLOR_HIGH)
+			hb = CreateSolidBrush(TraySave.cMonitorColor[id - IDC_BUTTON_COLOR_BACKGROUND]);
 		else
 			hb = CreateSolidBrush(TraySave.dAlphaColor[iProject] & 0xffffff);
 		FillRect(hdc, &rc, hb);
@@ -4963,233 +4654,6 @@ INT_PTR CALLBACK ColorButtonProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM 
 	}
 	}
 	return CallWindowProc(oldColorButtonPoroc, hWnd, message, wParam, lParam);
-}
-INT_PTR CALLBACK PriceProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
-{
-	switch (message)
-	{
-	case WM_INITDIALOG:
-	{
-		CheckDlgButton(hDlg, IDC_CHECK1, TraySave.bCheckHighRemind[0]);
-		CheckDlgButton(hDlg, IDC_CHECK2, TraySave.bCheckHighRemind[1]);
-		CheckDlgButton(hDlg, IDC_CHECK3, TraySave.bCheckHighRemind[2]);
-		CheckDlgButton(hDlg, IDC_CHECK4, TraySave.bCheckHighRemind[3]);
-		CheckDlgButton(hDlg, IDC_CHECK5, TraySave.bCheckHighRemind[4]);
-		CheckDlgButton(hDlg, IDC_CHECK6, TraySave.bCheckHighRemind[5]);
-		CheckDlgButton(hDlg, IDC_CHECK7, TraySave.bCheckLowRemind[0]);
-		CheckDlgButton(hDlg, IDC_CHECK8, TraySave.bCheckLowRemind[1]);
-		CheckDlgButton(hDlg, IDC_CHECK9, TraySave.bCheckLowRemind[2]);
-		CheckDlgButton(hDlg, IDC_CHECK10, TraySave.bCheckLowRemind[3]);
-		CheckDlgButton(hDlg, IDC_CHECK11, TraySave.bCheckLowRemind[4]);
-		CheckDlgButton(hDlg, IDC_CHECK12, TraySave.bCheckLowRemind[5]);
-		CheckDlgButton(hDlg, IDC_CHECK_13, TraySave.bCheckHighRemind[6]);
-		CheckDlgButton(hDlg, IDC_CHECK_14, TraySave.bCheckHighRemind[7]);
-		CheckDlgButton(hDlg, IDC_CHECK_15, TraySave.bCheckHighRemind[8]);
-		CheckDlgButton(hDlg, IDC_CHECK_16, TraySave.bCheckHighRemind[9]);
-		CheckDlgButton(hDlg, IDC_CHECK_17, TraySave.bCheckHighRemind[10]);
-		CheckDlgButton(hDlg, IDC_CHECK_18, TraySave.bCheckHighRemind[11]);
-		CheckDlgButton(hDlg, IDC_CHECK_19, TraySave.bCheckLowRemind[6]);
-		CheckDlgButton(hDlg, IDC_CHECK_20, TraySave.bCheckLowRemind[7]);
-		CheckDlgButton(hDlg, IDC_CHECK_21, TraySave.bCheckLowRemind[8]);
-		CheckDlgButton(hDlg, IDC_CHECK_22, TraySave.bCheckLowRemind[9]);
-		CheckDlgButton(hDlg, IDC_CHECK_23, TraySave.bCheckLowRemind[10]);
-		CheckDlgButton(hDlg, IDC_CHECK_24, TraySave.bCheckLowRemind[11]);
-		WCHAR sz[64];
-		FloatToStr(TraySave.HighRemind[0], sz);
-		SetDlgItemText(hDlg, IDC_EDIT1, sz);
-		FloatToStr(TraySave.HighRemind[1], sz);
-		SetDlgItemText(hDlg, IDC_EDIT2, sz);
-		FloatToStr(TraySave.HighRemind[2], sz);
-		SetDlgItemText(hDlg, IDC_EDIT3, sz);
-		FloatToStr(TraySave.HighRemind[3], sz);
-		SetDlgItemText(hDlg, IDC_EDIT4, sz);
-		FloatToStr(TraySave.HighRemind[4], sz);
-		SetDlgItemText(hDlg, IDC_EDIT5, sz);
-		FloatToStr(TraySave.HighRemind[5], sz);
-		SetDlgItemText(hDlg, IDC_EDIT6, sz);
-		FloatToStr(TraySave.LowRemind[0],sz);		
-		SetDlgItemText(hDlg, IDC_EDIT7, sz);
-		FloatToStr(TraySave.LowRemind[1], sz);
-		SetDlgItemText(hDlg, IDC_EDIT8, sz);
-		FloatToStr(TraySave.LowRemind[2], sz);
-		SetDlgItemText(hDlg, IDC_EDIT9, sz);
-		FloatToStr(TraySave.LowRemind[3], sz);
-		SetDlgItemText(hDlg, IDC_EDIT10, sz);
-		FloatToStr(TraySave.LowRemind[4], sz);
-		SetDlgItemText(hDlg, IDC_EDIT11, sz);
-		FloatToStr(TraySave.LowRemind[5], sz);
-		SetDlgItemText(hDlg, IDC_EDIT12, sz);
-		FloatToStr(TraySave.HighRemind[6], sz);
-		SetDlgItemText(hDlg, IDC_EDIT_13, sz);
-		FloatToStr(TraySave.HighRemind[7], sz);
-		SetDlgItemText(hDlg, IDC_EDIT_14, sz);
-		FloatToStr(TraySave.HighRemind[8], sz);
-		SetDlgItemText(hDlg, IDC_EDIT_15, sz);
-		FloatToStr(TraySave.HighRemind[9], sz);
-		SetDlgItemText(hDlg, IDC_EDIT_16, sz);
-		FloatToStr(TraySave.HighRemind[10], sz);
-		SetDlgItemText(hDlg, IDC_EDIT_17, sz);
-		FloatToStr(TraySave.HighRemind[11], sz);
-		SetDlgItemText(hDlg, IDC_EDIT_18, sz);
-		FloatToStr(TraySave.LowRemind[6], sz);
-		SetDlgItemText(hDlg, IDC_EDIT_19, sz);
-		FloatToStr(TraySave.LowRemind[7], sz);
-		SetDlgItemText(hDlg, IDC_EDIT_20, sz);
-		FloatToStr(TraySave.LowRemind[8], sz);
-		SetDlgItemText(hDlg, IDC_EDIT_21, sz);
-		FloatToStr(TraySave.LowRemind[9], sz);
-		SetDlgItemText(hDlg, IDC_EDIT_22, sz);
-		FloatToStr(TraySave.LowRemind[10], sz);
-		SetDlgItemText(hDlg, IDC_EDIT_23, sz);
-		FloatToStr(TraySave.LowRemind[11], sz);
-		SetDlgItemText(hDlg, IDC_EDIT_24, sz);
-		SetDlgItemText(hDlg, IDC_EDIT18, TraySave.szPriceName1);
-		SetDlgItemText(hDlg, IDC_EDIT19, TraySave.szPriceName2);
-		SetDlgItemText(hDlg, IDC_EDIT37, TraySave.szPriceName3);
-		SetDlgItemText(hDlg, IDC_EDIT38, TraySave.szPriceName4);
-		SetDlgItemText(hDlg, IDC_EDIT_OKX_WEB, TraySave.szOKXWeb);
-	}
-		break;
-	case WM_DESTROY:
-		TraySave.bCheckHighRemind[0] = IsDlgButtonChecked(hDlg, IDC_CHECK1);
-		TraySave.bCheckHighRemind[1] = IsDlgButtonChecked(hDlg, IDC_CHECK2);
-		TraySave.bCheckHighRemind[2] = IsDlgButtonChecked(hDlg, IDC_CHECK3);
-		TraySave.bCheckHighRemind[3] = IsDlgButtonChecked(hDlg, IDC_CHECK4);
-		TraySave.bCheckHighRemind[4] = IsDlgButtonChecked(hDlg, IDC_CHECK5);
-		TraySave.bCheckHighRemind[5] = IsDlgButtonChecked(hDlg, IDC_CHECK6);
-		TraySave.bCheckHighRemind[6] = IsDlgButtonChecked(hDlg, IDC_CHECK_13);
-		TraySave.bCheckHighRemind[7] = IsDlgButtonChecked(hDlg, IDC_CHECK_14);
-		TraySave.bCheckHighRemind[8] = IsDlgButtonChecked(hDlg, IDC_CHECK_15);
-		TraySave.bCheckHighRemind[9] = IsDlgButtonChecked(hDlg, IDC_CHECK_16);
-		TraySave.bCheckHighRemind[10] = IsDlgButtonChecked(hDlg, IDC_CHECK_17);
-		TraySave.bCheckHighRemind[11] = IsDlgButtonChecked(hDlg, IDC_CHECK_18);
-		TraySave.bCheckLowRemind[0] = IsDlgButtonChecked(hDlg, IDC_CHECK7);
-		TraySave.bCheckLowRemind[1] = IsDlgButtonChecked(hDlg, IDC_CHECK8);
-		TraySave.bCheckLowRemind[2] = IsDlgButtonChecked(hDlg, IDC_CHECK9);
-		TraySave.bCheckLowRemind[3] = IsDlgButtonChecked(hDlg, IDC_CHECK10);
-		TraySave.bCheckLowRemind[4] = IsDlgButtonChecked(hDlg, IDC_CHECK11);
-		TraySave.bCheckLowRemind[5] = IsDlgButtonChecked(hDlg, IDC_CHECK12);
-		TraySave.bCheckLowRemind[6] = IsDlgButtonChecked(hDlg, IDC_CHECK_19);
-		TraySave.bCheckLowRemind[7] = IsDlgButtonChecked(hDlg, IDC_CHECK_20);
-		TraySave.bCheckLowRemind[8] = IsDlgButtonChecked(hDlg, IDC_CHECK_21);
-		TraySave.bCheckLowRemind[9] = IsDlgButtonChecked(hDlg, IDC_CHECK_22);
-		TraySave.bCheckLowRemind[10] = IsDlgButtonChecked(hDlg, IDC_CHECK_23);
-		TraySave.bCheckLowRemind[11] = IsDlgButtonChecked(hDlg, IDC_CHECK_24);
-
-		WCHAR sz[64];
-		GetDlgItemText(hDlg, IDC_EDIT1, sz, 64);
-		TraySave.HighRemind[0] = xwtof(sz);
-		GetDlgItemText(hDlg, IDC_EDIT2, sz, 64);
-		TraySave.HighRemind[1] = xwtof(sz);
-		GetDlgItemText(hDlg, IDC_EDIT3, sz, 64);
-		TraySave.HighRemind[2] = xwtof(sz);
-		GetDlgItemText(hDlg, IDC_EDIT4, sz, 64);
-		TraySave.HighRemind[3] = xwtof(sz);
-		GetDlgItemText(hDlg, IDC_EDIT5, sz, 64);
-		TraySave.HighRemind[4] = xwtof(sz);
-		GetDlgItemText(hDlg, IDC_EDIT6, sz, 64);
-		TraySave.HighRemind[5] = xwtof(sz);
-		GetDlgItemText(hDlg, IDC_EDIT7, sz, 64);
-		TraySave.LowRemind[0] = xwtof(sz);
-		GetDlgItemText(hDlg, IDC_EDIT8, sz, 64);
-		TraySave.LowRemind[1] = xwtof(sz);
-		GetDlgItemText(hDlg, IDC_EDIT9, sz, 64);
-		TraySave.LowRemind[2] = xwtof(sz);
-		GetDlgItemText(hDlg, IDC_EDIT10, sz, 64);
-		TraySave.LowRemind[3] = xwtof(sz);
-		GetDlgItemText(hDlg, IDC_EDIT11, sz, 64);
-		TraySave.LowRemind[4] = xwtof(sz);
-		GetDlgItemText(hDlg, IDC_EDIT12, sz, 64);
-		TraySave.LowRemind[5] = xwtof(sz);
-		GetDlgItemText(hDlg, IDC_EDIT_13, sz, 64);
-		TraySave.HighRemind[6] = xwtof(sz);
-		GetDlgItemText(hDlg, IDC_EDIT_14, sz, 64);
-		TraySave.HighRemind[7] = xwtof(sz);
-		GetDlgItemText(hDlg, IDC_EDIT_15, sz, 64);
-		TraySave.HighRemind[8] = xwtof(sz);
-		GetDlgItemText(hDlg, IDC_EDIT_16, sz, 64);
-		TraySave.HighRemind[9] = xwtof(sz);
-		GetDlgItemText(hDlg, IDC_EDIT_17, sz, 64);
-		TraySave.HighRemind[10] = xwtof(sz);
-		GetDlgItemText(hDlg, IDC_EDIT_18, sz, 64);
-		TraySave.HighRemind[11] = xwtof(sz);
-		GetDlgItemText(hDlg, IDC_EDIT_19, sz, 64);
-		TraySave.LowRemind[6] = xwtof(sz);
-		GetDlgItemText(hDlg, IDC_EDIT_20, sz, 64);
-		TraySave.LowRemind[7] = xwtof(sz);
-		GetDlgItemText(hDlg, IDC_EDIT_21, sz, 64);
-		TraySave.LowRemind[8] = xwtof(sz);
-		GetDlgItemText(hDlg, IDC_EDIT_22, sz, 64);
-		TraySave.LowRemind[9] = xwtof(sz);
-		GetDlgItemText(hDlg, IDC_EDIT_23, sz, 64);
-		TraySave.LowRemind[10] = xwtof(sz);
-		GetDlgItemText(hDlg, IDC_EDIT_24, sz, 64);
-		TraySave.LowRemind[11] = xwtof(sz);
-		GetDlgItemText(hDlg, IDC_EDIT18, TraySave.szPriceName1, 64);
-		GetDlgItemText(hDlg, IDC_EDIT19, TraySave.szPriceName2, 64);
-		GetDlgItemText(hDlg, IDC_EDIT37, TraySave.szPriceName3, 64);
-		GetDlgItemText(hDlg, IDC_EDIT38, TraySave.szPriceName4, 64);
-		GetDlgItemText(hDlg, IDC_EDIT_OKX_WEB, TraySave.szOKXWeb, 32);
-		if (GetOKXPrice(TraySave.szPriceName1, TraySave.szOKXWeb, &TrayData->fLastPrice1, &TrayData->fOpenPrice1, TrayData->szLastPrice1, NULL))
-			TraySave.iPriceInterface[0] = FALSE;
-		else if (GetSinaPrice(TraySave.szPriceName1, &TrayData->fLastPrice1, &TrayData->fOpenPrice1, TrayData->szLastPrice1, NULL))
-			TraySave.iPriceInterface[0] = TRUE;
-		if (GetOKXPrice(TraySave.szPriceName2, TraySave.szOKXWeb, &TrayData->fLastPrice2, &TrayData->fOpenPrice2, TrayData->szLastPrice2, NULL))
-			TraySave.iPriceInterface[1] = FALSE;
-		else if (GetSinaPrice(TraySave.szPriceName2, &TrayData->fLastPrice2, &TrayData->fOpenPrice2, TrayData->szLastPrice2, NULL))
-			TraySave.iPriceInterface[1] = TRUE;
-		if (GetOKXPrice(TraySave.szPriceName3, TraySave.szOKXWeb, &TrayData->fLastPrice3, &TrayData->fOpenPrice3, TrayData->szLastPrice3, NULL))
-			TraySave.iPriceInterface[2] = FALSE;
-		else if (GetSinaPrice(TraySave.szPriceName3, &TrayData->fLastPrice3, &TrayData->fOpenPrice3, TrayData->szLastPrice3, NULL))
-			TraySave.iPriceInterface[2] = TRUE;
-		if (GetOKXPrice(TraySave.szPriceName4, TraySave.szOKXWeb, &TrayData->fLastPrice4, &TrayData->fOpenPrice4, TrayData->szLastPrice4, NULL))
-			TraySave.iPriceInterface[3] = FALSE;
-		else if (GetSinaPrice(TraySave.szPriceName4, &TrayData->fLastPrice4, &TrayData->fOpenPrice4, TrayData->szLastPrice4, NULL))
-			TraySave.iPriceInterface[3] = TRUE;
-		WriteReg();
-		break;	
-	case WM_COMMAND:
-		if (LOWORD(wParam) == IDC_TWOFOUR)
-		{
-			RECT rc;
-			GetWindowRect(hDlg, &rc);
-			int x, y, w, h;
-			if (lParam != 888)
-			{
-				if (TraySave.bTwoFour)
-				{
-					rc.right = (rc.right - rc.left) / 2;
-				}
-				else
-				{
-					rc.right = (rc.right - rc.left) * 2;
-				}
-				rc.left = 0;
-				TraySave.bTwoFour = !TraySave.bTwoFour;
-				WriteReg();
-				SetWH();
-				AdjustWindowPos();
-			}
-			w = rc.right-rc.left;
-			h = rc.bottom - rc.top;
-			RECT wrc, src;
-			GetWindowRect(hTaskBar, &wrc);
-			GetScreenRect(hTaskBar, &src, TRUE);
-			if (wrc.bottom + h > src.bottom)
-				y = wrc.top - h;
-			else
-				y = wrc.bottom;
-			if (wrc.right - (wrc.right - wrc.left) / 2 + w / 2 > src.right)
-				x = src.right - w;
-			else if (wrc.right - (wrc.right - wrc.left) / 2 - w / 2 < src.left)
-				x = src.left;
-			else
-				x = wrc.right - (wrc.right - wrc.left) / 2 - w / 2;
-			SetWindowPos(hPrice, HWND_TOPMOST, x, y, w, h, SWP_NOACTIVATE | SWP_SHOWWINDOW);
-		}
-		break;
-	}
-	return(INT_PTR)FALSE;
 }
 void ShowSelectMenu(BOOL bNet)
 {

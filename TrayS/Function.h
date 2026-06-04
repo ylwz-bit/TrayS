@@ -1,4 +1,4 @@
-#include <windows.h>
+ï»¿#include <windows.h>
 #include <shellapi.h>
 #include <Psapi.h>
 #include <Mmdeviceapi.h>
@@ -7,8 +7,6 @@
 #include <tlhelp32.h>
 #include <commctrl.h>
 
-//#include "Winhttp.h"
-//#pragma comment(lib,"winhttp.lib")
 
 //GDI+
 /*
@@ -17,9 +15,9 @@
 using namespace Gdiplus;
 */
 
-const WCHAR lpServiceName[] = L"TrayS";//³ÌÐòÃû
-const WCHAR szShellTray[] = L"Shell_TrayWnd";//Ö÷ÈÎÎñÀ¸ÀàÃû
-const WCHAR szSecondaryTray[] = L"Shell_SecondaryTrayWnd";//¸±ÈÎÎñÀ¸ÀàÃû
+const WCHAR lpServiceName[] = L"TrayS";//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+const WCHAR szShellTray[] = L"Shell_TrayWnd";//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+const WCHAR szSecondaryTray[] = L"Shell_SecondaryTrayWnd";//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 typedef enum _WINDOWCOMPOSITIONATTRIB
 {
 	WCA_UNDEFINED = 0,
@@ -76,31 +74,31 @@ typedef struct _ACCENT_POLICY
 	DWORD AnimationId;
 } ACCENT_POLICY;
 typedef BOOL(WINAPI* pfnSetWindowCompositionAttribute)(HWND, struct _WINDOWCOMPOSITIONATTRIBDATA*);
-void		SetToCurrentPath();//ÉèÖÃ½ø³ÌÂ·¾¶Îªµ±Ç°Â·¾¶
+void		SetToCurrentPath();//ï¿½ï¿½ï¿½Ã½ï¿½ï¿½ï¿½Â·ï¿½ï¿½Îªï¿½ï¿½Ç°Â·ï¿½ï¿½
 void		EmptyProcessMemory(DWORD pID=NULL);
-BOOL		RunProcess(LPTSTR szExe, const WCHAR* szCommandLine,HANDLE *pProcess=NULL);//ÔËÐÐ³ÌÐò
-BOOL		SetWindowCompositionAttribute(HWND hWnd, ACCENT_STATE mode, DWORD AlphaColor,BOOL bWin11=FALSE);//ÉèÖÃ´°¿ÚWIN10·ç¸ñ
-BOOL		AutoRun(BOOL GetSet, BOOL bAutoRun, const WCHAR* szName);//¶ÁÈ¡¡¢ÉèÖÃ¿ª»úÆô¶¯¡¢¹Ø±Õ¿ª»úÆô¶¯
-HICON		GetIcon(HWND hWnd, BOOL* bUWP, HWND* hUICoreWnd, int IconSize);//»ñÈ¡´°¿ÚÍ¼±ê
-BOOL		GetProcessFileName(DWORD dwProcessId, LPTSTR pszFileName, DWORD dwFileNameLength);//Í¨¹ý½ø³ÌID»ñÈ¡Ä¿Â¼ÎÄ¼þÃû
-BOOL		SetForeground(HWND hWnd);//Ç¿ÖÆÉèÖÃ´°¿ÚÎªÇ°Ì¨
-void		lstrlwr(WCHAR* wString, size_t SizeInWords);//×Ö·û´®×ªÐ¡Ð´
-wchar_t*	lstrstr(const wchar_t* str, const wchar_t* sub);//×Ö·û´®²éÕÒ
-BOOL		OpenWindowPath(HWND hWnd);//´ò¿ª´°¿ÚËùÔÚµÄ½ø³ÌÂ·¾¶
-BOOL		OpenProcessPath(DWORD dwProcessId);//Í¨¹ý½ø³ÌID´ò¿ª½ø³ÌµÄÂ·¾¶
-BOOL		EnableDebugPrivilege(BOOL bEnableDebugPrivilege);//DEBUGÌáÈ¨
-int			GetScreenRect(HWND hWnd, LPRECT lpRect, BOOL bTray);//»ñÈ¡´°¿ÚËùÔÚµÄÆÁÄ»´óÐ¡¿É¼õÈ¥ÈÎÎñÀ¸
-BOOL		GetSetVolume(BOOL bSet, HWND hWnd, DWORD dwProcessId, float* fVolume, BOOL* bMute, BOOL IsMixer);//»ñÈ¡ÓëÉèÖÃ½ø³ÌÒôÁ¿
+BOOL		RunProcess(LPTSTR szExe, const WCHAR* szCommandLine,HANDLE *pProcess=NULL);//ï¿½ï¿½ï¿½Ð³ï¿½ï¿½ï¿½
+BOOL		SetWindowCompositionAttribute(HWND hWnd, ACCENT_STATE mode, DWORD AlphaColor,BOOL bWin11=FALSE);//ï¿½ï¿½ï¿½Ã´ï¿½ï¿½ï¿½WIN10ï¿½ï¿½ï¿½
+BOOL		AutoRun(BOOL GetSet, BOOL bAutoRun, const WCHAR* szName);//ï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½ï¿½Ã¿ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ø±Õ¿ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+HICON		GetIcon(HWND hWnd, BOOL* bUWP, HWND* hUICoreWnd, int IconSize);//ï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½Í¼ï¿½ï¿½
+BOOL		GetProcessFileName(DWORD dwProcessId, LPTSTR pszFileName, DWORD dwFileNameLength);//Í¨ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½IDï¿½ï¿½È¡Ä¿Â¼ï¿½Ä¼ï¿½ï¿½ï¿½
+BOOL		SetForeground(HWND hWnd);//Ç¿ï¿½ï¿½ï¿½ï¿½ï¿½Ã´ï¿½ï¿½ï¿½ÎªÇ°Ì¨
+void		lstrlwr(WCHAR* wString, size_t SizeInWords);//ï¿½Ö·ï¿½ï¿½ï¿½×ªÐ¡Ð´
+wchar_t*	lstrstr(const wchar_t* str, const wchar_t* sub);//ï¿½Ö·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+BOOL		OpenWindowPath(HWND hWnd);//ï¿½ò¿ª´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÚµÄ½ï¿½ï¿½ï¿½Â·ï¿½ï¿½
+BOOL		OpenProcessPath(DWORD dwProcessId);//Í¨ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½IDï¿½ò¿ª½ï¿½ï¿½Ìµï¿½Â·ï¿½ï¿½
+BOOL		EnableDebugPrivilege(BOOL bEnableDebugPrivilege);//DEBUGï¿½ï¿½È¨
+int			GetScreenRect(HWND hWnd, LPRECT lpRect, BOOL bTray);//ï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Úµï¿½ï¿½ï¿½Ä»ï¿½ï¿½Ð¡ï¿½É¼ï¿½È¥ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+BOOL		GetSetVolume(BOOL bSet, HWND hWnd, DWORD dwProcessId, float* fVolume, BOOL* bMute, BOOL IsMixer);//ï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½ï¿½Ã½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
-void		InitService();//³õÊ¼»¯·þÎñ²ÎÊý
-BOOL		IsUserAdmin();//ÅÐ¶ÏÊÇÒÔ¹ÜÀíÔ±È¨ÏÞÔËÐÐ
-BOOL		InstallService();//°²×°·þÎñ
-BOOL		UninstallService();//Ð¶ÔØ·þÎñ
-BOOL		ServiceCtrlStart();//¿ªÆô·þÎñ
-BOOL		ServiceCtrlStop();//Í£Ö¹·þÎñ
-DWORD		ServiceRunState();//·þÎñÔËÐÐ×´Ì¬
-BOOL		IsServiceInstalled();//·þÎñÊÇ·ñÒÑ¾­°²×°
-void WINAPI ServiceMain(DWORD dwArgc, LPTSTR* lpszArgv);//·þÎñÖ÷Ïß³ÌÈë¿Ú
+void		InitService();//ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+BOOL		IsUserAdmin();//ï¿½Ð¶ï¿½ï¿½ï¿½ï¿½Ô¹ï¿½ï¿½ï¿½Ô±È¨ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+BOOL		InstallService();//ï¿½ï¿½×°ï¿½ï¿½ï¿½ï¿½
+BOOL		UninstallService();//Ð¶ï¿½Ø·ï¿½ï¿½ï¿½
+BOOL		ServiceCtrlStart();//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+BOOL		ServiceCtrlStop();//Í£Ö¹ï¿½ï¿½ï¿½ï¿½
+DWORD		ServiceRunState();//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½×´Ì¬
+BOOL		IsServiceInstalled();//ï¿½ï¿½ï¿½ï¿½ï¿½Ç·ï¿½ï¿½Ñ¾ï¿½ï¿½ï¿½×°
+void WINAPI ServiceMain(DWORD dwArgc, LPTSTR* lpszArgv);//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ß³ï¿½ï¿½ï¿½ï¿½
 
 HRESULT		pSHLoadIndirectString(LPCWSTR pszSource, LPWSTR pszOutBuf, UINT cchOutBuf, void** ppvReserved);
 UINT		pDragQueryFile(HDROP hDrop, UINT iFile, LPTSTR lpszFile, UINT cch);
@@ -112,52 +110,9 @@ BOOL		pShell_NotifyIcon(DWORD dwMessage, _In_ PNOTIFYICONDATAW lpData);
 BOOL		pWTSQueryUserToken(ULONG SessionId, PHANDLE phToken);
 BOOL		pCreateEnvironmentBlock(_At_((PZZWSTR*)lpEnvironment, _Outptr_)LPVOID* lpEnvironment, _In_opt_ HANDLE  hToken, _In_ BOOL bInherit);
 ULONG		pCallNtPowerInformation(_In_ POWER_INFORMATION_LEVEL InformationLevel, _In_reads_bytes_opt_(InputBufferLength) PVOID InputBuffer, _In_ ULONG InputBufferLength, _Out_writes_bytes_opt_(OutputBufferLength) PVOID OutputBuffer, _In_ ULONG OutputBufferLength);
-int			DrawShadowText(HDC hDC, LPCTSTR lpString, int nCount, LPRECT lpRect, UINT uFormat, COLORREF bColor, BOOL bYes);//»æÖÆÒõÓ°ÎÄ×Ö
-DWORD		GetSystemUsesLightTheme();//»ñÈ¡ÏµÍ³Ö÷ÌâÑÕÉ«Ä£Ê½
+int			DrawShadowText(HDC hDC, LPCTSTR lpString, int nCount, LPRECT lpRect, UINT uFormat, COLORREF bColor, BOOL bYes);//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó°ï¿½ï¿½ï¿½ï¿½
+DWORD		GetSystemUsesLightTheme();//ï¿½ï¿½È¡ÏµÍ³ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É«Ä£Ê½
 BOOL		pChangeWindowMessageFilter(UINT message, DWORD dwFlag);
 UINT		pGetDpiForWindow(HWND hWnd);
 UINT_PTR	pSHAppBarMessage(DWORD dwMessage,PAPPBARDATA pData);
 
-BOOL GetOKXPrice(LPTSTR szName, LPTSTR szWeb, float* fOutLast, float* fOutOpen, WCHAR* szOutLast, WCHAR* szOutOpen);
-BOOL GetSinaPrice(LPTSTR szName, float* fOutLast, float* fOutOpen, WCHAR* szOutLast, WCHAR* szOutOpen);
-
-char* xstrstr(const char* str, const char* sub);
-float xatof(const char* s);
-float xwtof(const WCHAR * s);
-BOOL FloatToStr(float f, WCHAR* sz);
-
-
-typedef LPVOID HINTERNET;
-typedef HINTERNET* LPHINTERNET;
-typedef WORD INTERNET_PORT;
-typedef INTERNET_PORT* LPINTERNET_PORT;
-// WinHttpOpen dwAccessType values (also for WINHTTP_PROXY_INFO::dwAccessType)
-#define WINHTTP_ACCESS_TYPE_DEFAULT_PROXY               0
-#define WINHTTP_ACCESS_TYPE_NO_PROXY                    1
-#define WINHTTP_ACCESS_TYPE_NAMED_PROXY                 3
-#define WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY             4
-#define INTERNET_DEFAULT_PORT           0           // use the protocol-specific default
-#define INTERNET_DEFAULT_HTTP_PORT      80          //    "     "  HTTP   "
-#define INTERNET_DEFAULT_HTTPS_PORT     443         //    "     "  HTTPS  "
-// WinHttpOpenRequest prettifers for optional parameters
-#define WINHTTP_NO_REFERER             NULL
-#define WINHTTP_DEFAULT_ACCEPT_TYPES   NULL
-// flags for WinHttpOpenRequest():
-#define WINHTTP_FLAG_SECURE                0x00800000  // use SSL if applicable (HTTPS)
-#define WINHTTP_FLAG_ESCAPE_PERCENT        0x00000004  // if escaping enabled, escape percent as well
-#define WINHTTP_FLAG_NULL_CODEPAGE         0x00000008  // assume all symbols are ASCII, use fast convertion
-#define WINHTTP_FLAG_BYPASS_PROXY_CACHE    0x00000100 // add "pragma: no-cache" request header
-#define WINHTTP_FLAG_REFRESH               WINHTTP_FLAG_BYPASS_PROXY_CACHE
-#define WINHTTP_FLAG_ESCAPE_DISABLE        0x00000040  // disable escaping
-#define WINHTTP_FLAG_ESCAPE_DISABLE_QUERY  0x00000080  // if escaping enabled escape path part, but do not escape query
-// WinHttpSendRequest prettifiers for optional parameters.
-#define WINHTTP_NO_ADDITIONAL_HEADERS   NULL
-#define WINHTTP_NO_REQUEST_DATA         NULL
-typedef HINTERNET (WINAPI * pfnWinHttpOpen)(LPCWSTR pszAgentW,DWORD dwAccessType,LPCWSTR pszProxyW,LPCWSTR pszProxyBypassW,DWORD dwFlags);
-typedef HINTERNET (WINAPI * pfnWinHttpConnect)(HINTERNET hSession,LPCWSTR pswzServerName,INTERNET_PORT nServerPort,DWORD dwReserved);
-typedef HINTERNET (WINAPI * pfnWinHttpOpenRequest)(HINTERNET hConnect,LPCWSTR pwszVerb,LPCWSTR pwszObjectName,LPCWSTR pwszVersion,LPCWSTR pwszReferrer OPTIONAL,LPCWSTR FAR* ppwszAcceptTypes OPTIONAL,DWORD dwFlags);
-typedef BOOL (WINAPI * pfnWinHttpSendRequest)(HINTERNET hRequest,LPCWSTR lpszHeaders,DWORD dwHeadersLength,LPVOID lpOptional,DWORD dwOptionalLength,DWORD dwTotalLength,DWORD_PTR dwContext);
-typedef BOOL (WINAPI * pfnWinHttpReceiveResponse)(HINTERNET hRequest,LPVOID lpReserved);
-typedef BOOL (WINAPI * pfnWinHttpQueryDataAvailable)(HINTERNET hRequest,LPDWORD lpdwNumberOfBytesAvailable);
-typedef BOOL (WINAPI* pfnWinHttpReadData)(HINTERNET hRequest,LPVOID lpBuffer,DWORD dwNumberOfBytesToRead,LPDWORD lpdwNumberOfBytesRead);
-typedef BOOL (WINAPI* pfnWinHttpCloseHandle)(HINTERNET hInternet);
