@@ -1179,7 +1179,7 @@ DWORD WINAPI GetDataThreadProc(PVOID pParam)//获取温度占用硬盘线程
 				{
 					TrayData->iTemperature1 = GetCpuTemp(1);
 				}
-				if (!(bPawnIoReady || hOHMA))
+				// 始终尝试 NvAPI/ADL 读取 GPU 温度
 				{
 					int iATITemperature = 0;
 					int iNVTemperature = 0;
