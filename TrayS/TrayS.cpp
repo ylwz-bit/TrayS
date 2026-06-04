@@ -549,50 +549,7 @@ int GetCpuTemp(DWORD Core)
 		TrayData->iHddTemperature = (int)fHdd;
 		if (fGpu != -1 && fGpu != 0)
 			TrayData->iTemperature2 = (int)fGpu;
-		else
-			TrayData->iTemperature2 = (int)fCpuPackge;
 		return (int)fCpu;
-	}
-	else
-	{
-		if (bRing0)
-		{
-			SetThreadAffinityMask(GetCurrentThread(), Core);
-			DWORD eax = 0, ebx, ecx, edx;
-			if (!bIntel)//老的AMD_CPU
-			{
-				Cpuid(1, &eax, &ebx, &ecx, &edx);
-				int family = ((eax >> 20) & 0xFF) + ((eax >> 8) & 0xF);
-				if (family > 0xf)
-				{
-					//				DWORD pciDevAddr = FindPciDeviceById(0x1022, 0x1203, 0);
-					DWORD miscReg;
-					ReadPciConfigDwordEx(MISC_CONTROL_3, 0xa4, &miscReg);
-					return (miscReg >> 21) >> 3;
-				}
-				else
-				{
-					//				DWORD pciDevAddr = FindPciDeviceById(0x1022, 0x1103, 0);
-					DWORD miscReg;
-					ReadPciConfigDwordEx(MISC_CONTROL_3, 0xe4, &miscReg);
-					return ((miscReg & 0xFF0000) >> 16) - 49;
-					//				return (miscReg >> 16) & 0xFF;
-				}
-			}
-			else//INTEL_CPU
-			{
-				DWORD IAcore;
-				int Tjunction = 100;
-				Rdmsr(0x1A2, &eax, &edx);
-				if (eax & 0x20000000)
-					Tjunction = 85;
-				Rdmsr(0x19C, &eax, &edx);
-				IAcore = eax;
-				IAcore &= 0xFF0000;
-				IAcore = IAcore >> 16;
-				return Tjunction - IAcore;
-			}
-		}
 	}
 	return 0;
 }
@@ -610,28 +567,10 @@ void LoadTemperatureDLL()
 			float fHdd,fGpu,fCpuPackge;
 			GetTemperature(&fCpu, &fGpu, NULL,  &fHdd,-1,&fCpuPackge);
 		}
-		if(fCpu != -1)
-			bRing0 = TRUE;
-		else
+		if(fCpu == -1)
 		{
 			FreeLibrary(hOHMA);
 			hOHMA = NULL;
-		}
-	}
-	if(hOHMA==NULL)
-	{
-		if (!InitOpenLibSys(&m_hOpenLibSys))
-			bRing0 = FALSE;
-		else
-		{
-			bRing0 = TRUE;
-			DWORD eax, ebx, ecx, edx;
-			Cpuid(0, &eax, &ebx, &ecx, &edx);
-			bIntel = TRUE;
-			if (ebx == 0x68747541)
-			{
-				bIntel = FALSE;
-			}
 		}
 	}
 #ifdef _WIN64
@@ -720,9 +659,6 @@ void FreeTemperatureDLL()
 		FreeLibrary(hOHMA);
 		hOHMA = NULL;
 	}
-	if (m_hOpenLibSys)
-		DeinitOpenLibSys(&m_hOpenLibSys);
-	m_hOpenLibSys = NULL;
 }
 ///////////////////////////////////////////////打开读取设置
 void OpenSetting()
@@ -1222,11 +1158,9 @@ DWORD WINAPI GetDataThreadProc(PVOID pParam)//获取温度占用硬盘线程
 			}
 			if (TraySave.bMonitorTemperature)
 			{
-				if (bRing0)
+				if (hOHMA)
 				{
 					TrayData->iTemperature1 = GetCpuTemp(1);
-					if (!hOHMA && hATIDLL == NULL && hNVDLL == NULL)
-						TrayData->iTemperature2 = GetCpuTemp(dNumProcessor);
 				}
 				if (!hOHMA)
 				{
@@ -1885,7 +1819,7 @@ void SetWH()
 		}
 		wTemperature = tSize.cx + wSpace;
 		mWidth += wTemperature;
-		if (bRing0)
+		if (hOHMA)
 			mHeight += wHeight * 2;
 		else
 			mHeight += wHeight;
@@ -3447,7 +3381,7 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 		if (bV)
 		{
 			OffsetRect(&rc, 0, (TraySave.bMonitorTraffic + TraySave.bMonitorUsage + TraySave.bMonitorTemperature) * 2 * wHeight);
-			if (!bRing0)
+			if (!hOHMA)
 				OffsetRect(&rc, 0, -wHeight);
 			if (hOHMA && TraySave.bMonitorTemperature)
 				rc.bottom += wHeight * 2;
@@ -3778,7 +3712,7 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 						rgb = TraySave.cMonitorColor[6];
 					SetTextColor(mdc, rgb);
 					/*
-								if(bRing0)
+								if(hOHMA)
 									swprintf_s(sz, 16, L"%.2d%%", iCPU);
 								else
 					*/
@@ -3809,7 +3743,7 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 						DrawShadowText(mdc, TraySave.szUsageCPU, lstrlen(TraySave.szUsageCPU), &crc, DT_LEFT | DT_VCENTER | DT_SINGLELINE, bColor, bShadow);
 					DrawShadowText(mdc, sz, sLen, &crc, DT_RIGHT | DT_VCENTER | DT_SINGLELINE, bColor, bShadow);
 					/*
-								if(bRing0)
+								if(hOHMA)
 									swprintf_s(sz, 16, L"%.2d%%", MemoryStatusEx.dwMemoryLoad);
 								else
 					*/
@@ -3853,7 +3787,7 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 						crc.bottom /= 2;
 						InflateRect(&crc, -(wSpace / 2), 0);
 					}
-					if (bRing0)
+					if (hOHMA)
 					{
 						if ((hATIDLL != NULL || hNVDLL != NULL )&& TrayData->iTemperature1 == 0 && TraySave.bMonitorDisk&&!hOHMA)
 							TrayData->iTemperature1 = TrayData->disktime;
@@ -3890,7 +3824,7 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 						}
 						DrawShadowText(mdc, sz, lstrlen(sz), &crc, DT_RIGHT | DT_VCENTER | DT_SINGLELINE, bColor, bShadow);
 					}
-					if (bRing0)
+					if (hOHMA)
 					{
 						if (VTray)
 							OffsetRect(&crc, 0, wHeight);
@@ -3952,7 +3886,7 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 						if (TraySave.bMonitorTemperature)
 						{
 							crc.top += wHeight;
-							if (bRing0)
+							if (hOHMA)
 								crc.top += wHeight;
 						}
 						if (TraySave.bMonitorUsage)
@@ -4083,7 +4017,7 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 						if (TraySave.bMonitorTemperature)
 						{
 							crc.top += wHeight;
-							if (bRing0)
+							if (hOHMA)
 								crc.top += wHeight;
 						}
 						if (TraySave.bMonitorUsage)
@@ -4136,7 +4070,7 @@ INT_PTR CALLBACK TaskBarProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 						if (TraySave.bMonitorTemperature)
 						{
 							crc.top += wHeight;
-							if (bRing0)
+							if (hOHMA)
 								crc.top += wHeight;
 						}
 						if (TraySave.bMonitorUsage)

@@ -55,8 +55,9 @@ namespace OpenHardwareMonitorApi
     {
         if (m_gpu_nvidia_temperature >= 0)
             return m_gpu_nvidia_temperature;
-        else
-            return m_gpu_ati_temperature;
+        if (m_gpu_intel_temperature >= 0)
+            return m_gpu_intel_temperature;
+        return m_gpu_ati_temperature;
     }
 
     float COpenHardwareMonitor::HDDTemperature()
@@ -73,8 +74,9 @@ namespace OpenHardwareMonitorApi
     {
         if (m_gpu_nvidia_usage >= 0)
             return m_gpu_nvidia_usage;
-        else
-            return m_gpu_ati_usage;
+        if (m_gpu_intel_usage >= 0)
+            return m_gpu_intel_usage;
+        return m_gpu_ati_usage;
     }
 
     const std::map<std::wstring, float>& COpenHardwareMonitor::AllHDDTemperature()
@@ -123,7 +125,7 @@ namespace OpenHardwareMonitorApi
         case HardwareType::Cpu:
             temperature_name = L"Core Average";
             break;
-        case HardwareType::GpuNvidia: case HardwareType::GpuAmd:
+			case HardwareType::GpuNvidia: case HardwareType::GpuAmd: case HardwareType::GpuIntel:
             temperature_name = L"GPU Core";
             break;
         default:
@@ -241,6 +243,8 @@ namespace OpenHardwareMonitorApi
         m_main_board_temperature = -1;
         m_gpu_nvidia_usage = -1;
         m_gpu_ati_usage = -1;
+        m_gpu_intel_temperature = -1;
+        m_gpu_intel_usage = -1;
         m_all_hdd_temperature.clear();
         m_all_hdd_usage.clear();
     }
@@ -302,6 +306,12 @@ namespace OpenHardwareMonitorApi
                     if (m_gpu_ati_usage < 0)
                         GetGpuUsage(computer->Hardware[i], m_gpu_ati_usage);
                     break;
+                case HardwareType::GpuIntel:
+                    if (m_gpu_intel_temperature < 0)
+                        GetHardwareTemperature(computer->Hardware[i], m_gpu_intel_temperature);
+                    if (m_gpu_intel_usage < 0)
+                        GetGpuUsage(computer->Hardware[i], m_gpu_intel_usage);
+                    break;
                 case HardwareType::Storage:
                 {
                     float cur_hdd_temperature = -1;
@@ -350,8 +360,11 @@ namespace OpenHardwareMonitorApi
 
     void MonitorGlobal::Init()
     {
-        updateVisitor = gcnew UpdateVisitor();
         computer = gcnew Computer();
+        computer->IsCpuEnabled = true;
+        computer->IsGpuEnabled = true;
+        computer->IsStorageEnabled = true;
+        computer->IsMotherboardEnabled = true;
         computer->Open();
     }
 

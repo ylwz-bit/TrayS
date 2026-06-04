@@ -10,9 +10,6 @@
 #include <dwmapi.h>
 
 
-//WINRING0
-#include "OlsDef.h"
-#include "OlsApiInit.h"
 
 //ATIGPU
 #include "adl_sdk.h"
@@ -375,10 +372,7 @@ typedef ULONG(WINAPI* pfnAccessibleChildren)(_In_ IAccessible* paccContainer, _I
 pfnAccessibleObjectFromWindow AccessibleObjectFromWindowT;
 pfnAccessibleChildren AccessibleChildrenT;
 
-/////////////////////////////////////////////////CPU温度
-BOOL bRing0=NULL;
-HMODULE m_hOpenLibSys = NULL;
-BOOL bIntel;
+/////////////////////////////////////////////////CPU温度(OHM/PawnIO)
 ////////////////////////////////////////////////ATI显卡温度
 // Memory allocation function
 void* __stdcall ADL_Main_Memory_Alloc(int iSize)
