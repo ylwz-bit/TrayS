@@ -33,75 +33,88 @@ extern "C" OPENHARDWAREMONITOR_API void GetTemperature(float* fCpu,float * fGpu,
     if (m_pMonitor == 0)
     {
         m_pMonitor = OpenHardwareMonitorApi::CreateInstance();
-        if(fCpu)
-            m_pMonitor->SetCpuEnable(true);
-        if (fGpu)
-            m_pMonitor->SetGpuEnable(true);
-        if (fHdd)
-            m_pMonitor->SetHddEnable(true);
-        if (fMain)
-            m_pMonitor->SetMainboardEnable(true);
+        if (m_pMonitor)
+        {
+            if(fCpu)
+                m_pMonitor->SetCpuEnable(true);
+            if (fGpu)
+                m_pMonitor->SetGpuEnable(true);
+            if (fHdd)
+                m_pMonitor->SetHddEnable(true);
+            if (fMain)
+                m_pMonitor->SetMainboardEnable(true);
+        }
     }
+    if (!m_pMonitor)
+        return;
     m_pMonitor->GetHardwareInfo();
-    if (fCpu)
+    auto& cpuTemps = m_pMonitor->AllCpuTemperature();
+    if(fCpu)
     {
-        // 兼容混合架构CPU(P-Core/E-Core): Core Average > CPU Package > 首个传感器
-        auto& cpuMap = m_pMonitor->AllCpuTemperature();
-        auto iter = cpuMap.end();
-        auto it1 = cpuMap.find(L"Core Average");
-        if (it1 != cpuMap.end()) iter = it1;
-        if (iter == cpuMap.end())
+        *fCpu = 0;
+        if(!cpuTemps.empty())
         {
-            auto it2 = cpuMap.find(L"CPU Package");
-            if (it2 != cpuMap.end()) iter = it2;
+            // 兼容混合架构(P-Core/E-Core): CPU Core #1 > Core Average > CPU Package > 首个
+            auto iter = cpuTemps.find(L"CPU Core #1");
+            if(iter == cpuTemps.end())
+                iter = cpuTemps.find(L"Core Average");
+            if(iter == cpuTemps.end())
+                iter = cpuTemps.find(L"CPU Package");
+            if(iter == cpuTemps.end())
+                iter = cpuTemps.begin();
+            if(iter != cpuTemps.end())
+                *fCpu = iter->second;
         }
-        if (iter == cpuMap.end() && !cpuMap.empty())
-            iter = cpuMap.begin();
-        if (iter != cpuMap.end())
-            *fCpu = iter->second;
     }
-    if (fCpuPackge)
+    if(fCpuPackge)
     {
-        auto& cpuMap = m_pMonitor->AllCpuTemperature();
-        auto iter = cpuMap.find(L"CPU Package");
-        if (iter == cpuMap.end())
+        *fCpuPackge = 0;
+        if(!cpuTemps.empty())
         {
-            if (!cpuMap.empty())
+            auto iter = cpuTemps.find(L"CPU Package");
+            if(iter != cpuTemps.end())
+                *fCpuPackge = iter->second;
+            else
             {
-                iter = cpuMap.begin();
-                auto it2 = cpuMap.find(L"Core Average");
-                if (it2 != cpuMap.end()) iter = it2;
+                auto iter2 = cpuTemps.find(L"Core Average");
+                if(iter2 != cpuTemps.end())
+                    *fCpuPackge = iter2->second;
+                else if(!cpuTemps.empty())
+                {
+                    iter = cpuTemps.begin();
+                    *fCpuPackge = iter->second;
+                }
             }
         }
-        if (iter != cpuMap.end())
-            *fCpuPackge = iter->second;
     }
-    if (fGpu)
+    if(fGpu)
         *fGpu = m_pMonitor->GpuTemperature();
-    if (fMain)
+    if(fMain)
         *fMain = m_pMonitor->MainboardTemperature();
-    if (fHdd)
+    if(fHdd)
     {
-        auto& hddMap = m_pMonitor->AllHDDTemperature();
-        auto iter = hddMap.begin();
-        if (iHDD == -1)
+        *fHdd = 0;
+        auto& hddTemps = m_pMonitor->AllHDDTemperature();
+        if(!hddTemps.empty())
         {
-            float f = 0;
-            for (auto it = hddMap.begin(); it != hddMap.end(); ++it)
+            if(iHDD == -1)
             {
-                if (it->second > f)
-                    f = it->second;
+                float f = 0;
+                for(auto& item : hddTemps)
+                {
+                    if(item.second > f)
+                        f = item.second;
+                }
+                *fHdd = f;
             }
-            *fHdd = f;
-        }
-        else
-        {
-            for (int i = 0; i < iHDD && iter != hddMap.end(); i++)
+            else
             {
-                ++iter;
+                auto iter = hddTemps.begin();
+                for(int i = 0; i < iHDD && iter != hddTemps.end(); i++)
+                    ++iter;
+                if(iter != hddTemps.end())
+                    *fHdd = iter->second;
             }
-            if (iter != hddMap.end())
-                *fHdd = iter->second;
         }
     }
 }
