@@ -9,15 +9,15 @@ namespace OpenHardwareMonitorApi
     class IOpenHardwareMonitor
     {
     public:
-        virtual void GetHardwareInfo() = 0;     //获取一次硬件信息
-        virtual float CpuTemperature() = 0;     //返回获取到的CPU温度
-        virtual float GpuTemperature() = 0;     //返回获取到的GPU温度
-        virtual float HDDTemperature() = 0;     //返回获取到的硬盘温度
-        virtual float MainboardTemperature() = 0;   //返回获取到的主板温度
-        virtual float GpuUsage() = 0;           //返回获取到的GPU利用率
-        virtual const std::map<std::wstring, float>& AllHDDTemperature() = 0;   //返回所有硬盘的温度。map的key是硬盘的名称，value是硬盘的温度
-        virtual const std::map<std::wstring, float>& AllCpuTemperature() = 0;   //返回所有CPU（核心）的温度。map的key是CPU的名称，value是硬盘的温度
-        virtual const std::map<std::wstring, float>& AllHDDUsage() = 0;         //返回所有硬盘的使用率
+        virtual void GetHardwareInfo() = 0;
+        virtual float CpuTemperature() = 0;
+        virtual float GpuTemperature() = 0;
+        virtual float HDDTemperature() = 0;
+        virtual float MainboardTemperature() = 0;
+        virtual float GpuUsage() = 0;
+        virtual const std::map<std::wstring, float>& AllHDDTemperature() = 0;
+        virtual const std::map<std::wstring, float>& AllCpuTemperature() = 0;
+        virtual const std::map<std::wstring, float>& AllHDDUsage() = 0;
 
         virtual void SetCpuEnable(bool enable) = 0;
         virtual void SetGpuEnable(bool enable) = 0;
@@ -26,7 +26,6 @@ namespace OpenHardwareMonitorApi
     };
 
     std::shared_ptr<IOpenHardwareMonitor> CreateInstance();
-//    OPENHARDWAREMONITOR_API std::wstring GetErrorMessage();
 }
 std::shared_ptr<OpenHardwareMonitorApi::IOpenHardwareMonitor> m_pMonitor{};
 extern "C" OPENHARDWAREMONITOR_API void GetTemperature(float* fCpu,float * fGpu,float* fMain,float *fHdd,int iHDD,float * fCpuPackge)
@@ -41,55 +40,68 @@ extern "C" OPENHARDWAREMONITOR_API void GetTemperature(float* fCpu,float * fGpu,
         if (fHdd)
             m_pMonitor->SetHddEnable(true);
         if (fMain)
-            m_pMonitor->SetMainboardEnable(true);        
+            m_pMonitor->SetMainboardEnable(true);
     }
     m_pMonitor->GetHardwareInfo();
     if (fCpu)
     {
-        std::wstring cpu_core_name=L"CPU Core #1";
-		auto iter = m_pMonitor->AllCpuTemperature().find(cpu_core_name);
-		if (iter == m_pMonitor->AllCpuTemperature().end())
-		{
-			iter = m_pMonitor->AllCpuTemperature().begin();
-		}
-		*fCpu = iter->second;
+        // 兼容混合架构CPU(P-Core/E-Core): Core Average > CPU Package > 首个传感器
+        auto& cpuMap = m_pMonitor->AllCpuTemperature();
+        auto iter = cpuMap.end();
+        auto it1 = cpuMap.find(L"Core Average");
+        if (it1 != cpuMap.end()) iter = it1;
+        if (iter == cpuMap.end())
+        {
+            auto it2 = cpuMap.find(L"CPU Package");
+            if (it2 != cpuMap.end()) iter = it2;
+        }
+        if (iter == cpuMap.end() && !cpuMap.empty())
+            iter = cpuMap.begin();
+        if (iter != cpuMap.end())
+            *fCpu = iter->second;
     }
-	if (fCpuPackge)
-	{
-        std::wstring cpu_core_name = L"CPU Package";
-        auto iter = m_pMonitor->AllCpuTemperature().find(cpu_core_name);
-		if (iter == m_pMonitor->AllCpuTemperature().end())
-		{
-			iter = m_pMonitor->AllCpuTemperature().begin();
-			iter++;
-		}
-		*fCpuPackge = iter->second;
-	}
+    if (fCpuPackge)
+    {
+        auto& cpuMap = m_pMonitor->AllCpuTemperature();
+        auto iter = cpuMap.find(L"CPU Package");
+        if (iter == cpuMap.end())
+        {
+            if (!cpuMap.empty())
+            {
+                iter = cpuMap.begin();
+                auto it2 = cpuMap.find(L"Core Average");
+                if (it2 != cpuMap.end()) iter = it2;
+            }
+        }
+        if (iter != cpuMap.end())
+            *fCpuPackge = iter->second;
+    }
     if (fGpu)
         *fGpu = m_pMonitor->GpuTemperature();
     if (fMain)
         *fMain = m_pMonitor->MainboardTemperature();
     if (fHdd)
     {
-        auto iter = m_pMonitor->AllHDDTemperature().begin();
+        auto& hddMap = m_pMonitor->AllHDDTemperature();
+        auto iter = hddMap.begin();
         if (iHDD == -1)
         {
-            size_t n = m_pMonitor->AllHDDTemperature().size();
             float f = 0;
-            for (size_t i = 0; i < n; i++)
+            for (auto it = hddMap.begin(); it != hddMap.end(); ++it)
             {
-                if (iter->second > f)
-                    f = iter->second;
+                if (it->second > f)
+                    f = it->second;
             }
             *fHdd = f;
         }
         else
         {
-            for (int i = 0; i < iHDD; i++)
+            for (int i = 0; i < iHDD && iter != hddMap.end(); i++)
             {
                 ++iter;
             }
-            *fHdd = iter->second;
+            if (iter != hddMap.end())
+                *fHdd = iter->second;
         }
     }
 }
