@@ -1,4 +1,5 @@
 ﻿#include "Function.h"
+#include "Win11Taskbar.h"
 
 HRESULT pSHLoadIndirectString(LPCWSTR pszSource, LPWSTR pszOutBuf, UINT cchOutBuf, void** ppvReserved)
 {
@@ -982,17 +983,33 @@ BOOL AutoRun(BOOL GetSet, BOOL bAutoRun,const WCHAR* szName)
 }
 BOOL SetWindowCompositionAttribute(HWND hWnd, ACCENT_STATE mode, DWORD AlphaColor,BOOL bWin11)
 {
-	pfnSetWindowCompositionAttribute pSetWindowCompositionAttribute = NULL;
 	if (mode == ACCENT_DISABLED)
 	{
-//		if (bAccentNormal == FALSE)
-		{
-			SendMessage(hWnd, WM_THEMECHANGED, 0, 0);
-//			bAccentNormal = TRUE;
-		}
+		// Win11 TAP: restore default appearance
+		if (bWin11)
+			Win11TaskbarManager::Instance().RestoreDefault(hWnd);
+		SendMessage(hWnd, WM_THEMECHANGED, 0, 0);
 		return TRUE;
 	}
-//	bAccentNormal = FALSE;
+
+	// Win11 22H2+: use ExplorerTAP for taskbar transparency
+	if (bWin11)
+	{
+		Win11TaskbarManager& tap = Win11TaskbarManager::Instance();
+		if (!tap.HasFailed())
+		{
+			BOOL ok = FALSE;
+			if (mode == ACCENT_ENABLE_ACRYLICBLURBEHIND)
+				ok = tap.SetAcrylic(hWnd, AlphaColor);
+			else
+				ok = tap.SetTransparent(hWnd, AlphaColor);
+			if (ok)
+				return TRUE;
+		}
+		// If TAP failed, fall through to old API
+	}
+
+	pfnSetWindowCompositionAttribute pSetWindowCompositionAttribute = NULL;
 	BOOL ret = FALSE;
 	HMODULE hUser = GetModuleHandle(L"user32.dll");
 	if (hUser)
@@ -1011,6 +1028,10 @@ BOOL SetWindowCompositionAttribute(HWND hWnd, ACCENT_STATE mode, DWORD AlphaColo
 		ret = pSetWindowCompositionAttribute(hWnd, &data);
 	}
 	return ret;
+}
+void Win11TaskbarReset()
+{
+	Win11TaskbarManager::Instance().Reset();
 }
 /*
 typedef BOOL(WINAPI*pfnGetWindowCompositionAttribute)(HWND, struct _WINDOWCOMPOSITIONATTRIBDATA*);

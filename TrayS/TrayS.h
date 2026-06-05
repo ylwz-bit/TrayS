@@ -163,6 +163,7 @@ BOOL VTray = FALSE;//竖的任务栏
 BOOL bRealClose = FALSE;
 BOOL bSetting = FALSE;
 BOOL bTempDllInitDone = FALSE;
+UINT g_uTaskbarCreated = 0;
 /////////////////////////////////////////////////获取数据线程
 DWORD WINAPI MainThreadProc(PVOID pParam);
 DWORD WINAPI GetDataThreadProc(PVOID pParam);
@@ -487,6 +488,7 @@ INT_PTR CALLBACK    TimeProc(HWND, UINT, WPARAM, LPARAM);//秒窗口过程
 void SetTaskBarPos(HWND, HWND, HWND, HWND, BOOL);//设置任务栏图标位置
 int DrawShadowText(HDC hDC, LPCTSTR lpString, int nCount, LPRECT lpRect, UINT uFormat);//绘制阴影文字
 void FreeTemperatureDLL();//
+void Win11TaskbarReset();
 void LoadTemperatureDLL();//加载DLL
 void SetWH();//计算监控窗口高宽
 int GetProcessMemUsage();//获取内存使用大小
