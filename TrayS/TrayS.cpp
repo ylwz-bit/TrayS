@@ -801,12 +801,26 @@ void OpenSetting()
 }
 
 #ifndef _DEBUG
+// Release entry point: properly forward to wWinMain
 extern "C" void WinMainCRTStartup()
 {
-	LPWSTR lpCmdLine;
-#else
-int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nCmdShow) {
-	UNREFERENCED_PARAMETER(hPrevInstance);
+	LPWSTR lpCmdLine = GetCommandLineW();
+	if (lpCmdLine[0] == L'"') {
+		while (*++lpCmdLine && *lpCmdLine != L'"');
+		if (*lpCmdLine) ++lpCmdLine;
+	} else {
+		while (*lpCmdLine && *lpCmdLine != L' ' && *lpCmdLine != L'\t') ++lpCmdLine;
+	}
+	while (*lpCmdLine == L' ' || *lpCmdLine == L'\t') ++lpCmdLine;
+	STARTUPINFOW si;
+	GetStartupInfoW(&si);
+	int result = wWinMain(
+		GetModuleHandleW(NULL), NULL, lpCmdLine,
+		(si.dwFlags & STARTF_USESHOWWINDOW) ? si.wShowWindow : SW_SHOWDEFAULT);
+	ExitProcess(result);
+}
+#endif
+int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nCmdShow) {	UNREFERENCED_PARAMETER(hPrevInstance);
 	UNREFERENCED_PARAMETER(lpCmdLine);
 
 /*
@@ -867,7 +881,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		ServiceCtrlStop();
 	}
 */
-#endif
 #ifdef NDEBUG
 	if (OpenFileMapping(FILE_MAP_ALL_ACCESS, FALSE, szAppName) == NULL)/////////////////////////创建守护进程
 	{
@@ -889,7 +902,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 				UnmapViewOfFile(TrayData);
 				CloseHandle(hMap);
 				ExitProcess(0);
-				return;
+				return 0;
 			}
 	}
 #endif
