@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -149,7 +149,7 @@
       <UACExecutionLevel>RequireAdministrator</UACExecutionLevel>
       <DelayLoadDLLs>OLEAUT32.dll;ole32.dll;</DelayLoadDLLs>
       <SupportUnloadOfDelayLoadedDLL>true</SupportUnloadOfDelayLoadedDLL>
-      <AdditionalDependencies>ucrt.lib;vcruntime.lib;%(AdditionalDependencies)psapi.lib</AdditionalDependencies>
+      <AdditionalDependencies>ucrt.lib;vcruntime.lib;msvcrt.lib;psapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <MergeSections>.rdata=.text</MergeSections>
       <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
       <MinimumRequiredVersion>5.01</MinimumRequiredVersion>
@@ -198,7 +198,7 @@
       </HeapReserveSize>
       <StackReserveSize>
       </StackReserveSize>
-      <AdditionalDependencies>ucrt.lib;vcruntime.lib;psapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ucrt.lib;vcruntime.lib;msvcrt.lib;psapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <DelayLoadDLLs>user32.dll;gdi32.dll;advapi32.dll;OLEAUT32.dll;ole32.dll;</DelayLoadDLLs>
       <IgnoreAllDefaultLibraries>
       </IgnoreAllDefaultLibraries>
