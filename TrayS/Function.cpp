@@ -1,5 +1,5 @@
 ﻿#include "Function.h"
-////////////////////////////////////////////////////��̬���к���
+
 HRESULT pSHLoadIndirectString(LPCWSTR pszSource, LPWSTR pszOutBuf, UINT cchOutBuf, void** ppvReserved)
 {
 	HRESULT ret = NULL;
@@ -154,7 +154,7 @@ ULONG pCallNtPowerInformation(_In_ POWER_INFORMATION_LEVEL InformationLevel, _In
 	}
 	return ret;
 }
-BOOL LaunchAppIntoDifferentSession(WCHAR* szExe, WCHAR* szDir, WCHAR* szLine)//��SYSTEM���г��򲢿��Խ�������
+BOOL LaunchAppIntoDifferentSession(WCHAR* szExe, WCHAR* szDir, WCHAR* szLine)
 {
 	PROCESS_INFORMATION pi;
 	STARTUPINFO si;
@@ -290,12 +290,12 @@ BOOL LaunchAppIntoDifferentSession(WCHAR* szExe, WCHAR* szDir, WCHAR* szLine)//�
 	}
 	return bResult;
 }
-//////////////////////////////////////////////////////////////////////////������
+
 BOOL bInstallService;
 SERVICE_STATUS_HANDLE hServiceStatus;
 SERVICE_STATUS status;
 HANDLE hEvent = INVALID_HANDLE_VALUE;
-void InitService()//��ʼ���������
+void InitService()
 {
 	hServiceStatus = NULL;
 	status.dwServiceType = SERVICE_WIN32_OWN_PROCESS | SERVICE_INTERACTIVE_PROCESS;
@@ -306,14 +306,14 @@ void InitService()//��ʼ���������
 	status.dwCheckPoint = 0;
 	status.dwWaitHint = 0;
 }
-void WINAPI ServiceStrl(DWORD dwOpcode)//������ƺ���
+void WINAPI ServiceStrl(DWORD dwOpcode)
 {
 	switch (dwOpcode)
 	{
 	case SERVICE_CONTROL_STOP:
 		status.dwCurrentState = SERVICE_STOP_PENDING;
 		SetServiceStatus(hServiceStatus, &status);
-		//���߷����߳�ֹͣ����
+		
 		::SetEvent(hEvent);
 		break;
 	case SERVICE_CONTROL_PAUSE:
@@ -328,19 +328,19 @@ void WINAPI ServiceStrl(DWORD dwOpcode)//������ƺ���
 		break;
 	}
 }
-void WINAPI ServiceMain(DWORD dwArgc, LPTSTR* lpszArgv)//�������߳����
+void WINAPI ServiceMain(DWORD dwArgc, LPTSTR* lpszArgv)
 {
 	// Register the control request handler
 	status.dwCurrentState = SERVICE_START_PENDING;
 	status.dwControlsAccepted = SERVICE_ACCEPT_STOP;
-	//ע��������
+	
 	hServiceStatus = RegisterServiceCtrlHandler(lpServiceName, ServiceStrl);
 	if (hServiceStatus == NULL)
 	{
 		return;
 	}
 	SetServiceStatus(hServiceStatus, &status);
-	//���´������Ϊ�������ǰ��׼������
+	
 	hEvent = ::CreateEvent(NULL, TRUE, FALSE, NULL);
 	if (hEvent == NULL)
 	{
@@ -348,15 +348,15 @@ void WINAPI ServiceMain(DWORD dwArgc, LPTSTR* lpszArgv)//�������߳
 		SetServiceStatus(hServiceStatus, &status);
 		return;
 	}
-	//���ķ���״̬Ϊ���
+	
 	status.dwWin32ExitCode = S_OK;
 	status.dwCheckPoint = 0;
 	status.dwWaitHint = 0;
 	status.dwCurrentState = SERVICE_RUNNING;
 	SetServiceStatus(hServiceStatus, &status);
-	//�ȴ��û�ѡ��ֹͣ����
-	//��Ȼ��Ҳ���԰���ķ���������߳���ִ�У�
-	//��ʱ����ֻ��ȴ��߳̽����ȿɡ�
+	
+	
+	
 //	CloseHandle(CreateFile(L"d:\\topc.txt", GENERIC_READ, FILE_SHARE_READ, NULL, CREATE_ALWAYS, NULL, NULL));
 	WCHAR szExe[MAX_PATH];
 	HINSTANCE hInst = GetModuleHandle(NULL);
@@ -369,18 +369,18 @@ void WINAPI ServiceMain(DWORD dwArgc, LPTSTR* lpszArgv)//�������߳
 	while (WaitForSingleObject(hEvent, 1000) != WAIT_OBJECT_0)
 	{
 	}
-	//ֹͣ����
+	
 	status.dwCurrentState = SERVICE_STOPPED;
 	SetServiceStatus(hServiceStatus, &status);
 }
-DWORD ServiceRunState()//��������״̬
+DWORD ServiceRunState()
 {
 	BOOL bResult = FALSE;
-	//�򿪷�����ƹ�����
+	
 	SC_HANDLE hSCM = ::OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
 	if (hSCM != NULL)
 	{
-		//�򿪷���
+		
 		SC_HANDLE hService = ::OpenService(hSCM, lpServiceName, SERVICE_QUERY_STATUS);
 		if (hService != NULL)
 		{
@@ -393,14 +393,14 @@ DWORD ServiceRunState()//��������״̬
 	}
 	return bResult;
 }
-BOOL IsServiceInstalled()//�����Ƿ��Ѿ���װ
+BOOL IsServiceInstalled()
 {
 	BOOL bResult = FALSE;
-	//�򿪷�����ƹ�����
+	
 	SC_HANDLE hSCM = ::OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
 	if (hSCM != NULL)
 	{
-		//�򿪷���
+		
 		SC_HANDLE hService = ::OpenService(hSCM, lpServiceName, SERVICE_QUERY_CONFIG);
 		if (hService != NULL)
 		{
@@ -411,11 +411,11 @@ BOOL IsServiceInstalled()//�����Ƿ��Ѿ���װ
 	}
 	return bResult;
 }
-BOOL InstallService()//��װ����
+BOOL InstallService()
 {
 	if (IsServiceInstalled())
 		return TRUE;
-	//�򿪷�����ƹ�����
+	
 	SC_HANDLE hSCM = ::OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
 	if (hSCM == NULL)
 	{
@@ -424,14 +424,14 @@ BOOL InstallService()//��װ����
 	// Get the executable file path
 	TCHAR szFilePath[MAX_PATH];
 	::GetModuleFileName(NULL, szFilePath, MAX_PATH);
-	//��������
+	
 	SC_HANDLE hService = ::CreateService(
 		hSCM,
 		lpServiceName,
 		lpServiceName,
 		SERVICE_ALL_ACCESS,
 		SERVICE_WIN32_OWN_PROCESS | SERVICE_INTERACTIVE_PROCESS,
-		SERVICE_AUTO_START, //���ΪSERVICE_DEMAND_START���ʾ�˷������ֹ����
+		SERVICE_AUTO_START,
 		SERVICE_ERROR_NORMAL,
 		szFilePath,
 		NULL,
@@ -448,7 +448,7 @@ BOOL InstallService()//��װ����
 	::CloseServiceHandle(hSCM);
 	return TRUE;
 }
-BOOL UninstallService()//ж�ط���
+BOOL UninstallService()
 {
 	if (!IsServiceInstalled())
 		return TRUE;
@@ -465,7 +465,7 @@ BOOL UninstallService()//ж�ط���
 	}
 	SERVICE_STATUS status;
 	::ControlService(hService, SERVICE_CONTROL_STOP, &status);
-	//ɾ������
+	
 	BOOL bDelete = ::DeleteService(hService);
 	::CloseServiceHandle(hService);
 	::CloseServiceHandle(hSCM);
@@ -473,7 +473,7 @@ BOOL UninstallService()//ж�ط���
 		return TRUE;
 	return FALSE;
 }
-BOOL ServiceCtrlStart()//�������
+BOOL ServiceCtrlStart()
 {
 	BOOL bRet;
 	SC_HANDLE hSCM;
@@ -488,7 +488,7 @@ BOOL ServiceCtrlStart()//�������
 			TCHAR szFilePath[MAX_PATH];
 			::GetModuleFileName(NULL, szFilePath, MAX_PATH);
 			ChangeServiceConfig(hService, SERVICE_WIN32_OWN_PROCESS | SERVICE_INTERACTIVE_PROCESS, SERVICE_AUTO_START, SERVICE_NO_CHANGE, szFilePath, NULL, NULL, NULL, NULL, NULL, NULL);
-			//��ʼService
+			
 			bRet = StartService(hService, 0, NULL);
 			CloseServiceHandle(hService);
 		}
@@ -504,7 +504,7 @@ BOOL ServiceCtrlStart()//�������
 	}
 	return bRet;
 }
-BOOL ServiceCtrlStop()//ֹͣ����
+BOOL ServiceCtrlStop()
 {
 	BOOL bRet;
 	SC_HANDLE hSCM;
@@ -539,7 +539,7 @@ BOOL ServiceCtrlStop()//ֹͣ����
 	}
 	return bRet;
 }
-int GetScreenRect(HWND hWnd, LPRECT lpRect, BOOL bTray)//��ȡ�������ڵ���Ļ��С�ɼ�ȥ������
+int GetScreenRect(HWND hWnd, LPRECT lpRect, BOOL bTray)
 {
 	HMONITOR hMon = MonitorFromWindow(hWnd, MONITOR_DEFAULTTONEAREST);
 	MONITORINFO mi;
@@ -585,7 +585,7 @@ typedef struct _PROCESS_BASIC_INFORMATION
 	ULONG InheritedFromUniqueProcessId;
 }PROCESS_BASIC_INFORMATION;
 typedef LONG(WINAPI* pfnNtQueryInformationProcess)(HANDLE, UINT, PVOID, ULONG, PULONG);
-DWORD GetParentProcessID(DWORD dwProcessId)//��ȡ������ID
+DWORD GetParentProcessID(DWORD dwProcessId)
 {
 	if (dwProcessId == -1)
 		return -1;
@@ -609,7 +609,7 @@ DWORD GetParentProcessID(DWORD dwProcessId)//��ȡ������ID
 	CloseHandle(hProcess);
 	return dwParentPID;
 }
-BOOL GetSetVolume(BOOL bSet, HWND hWnd, DWORD dwProcessId, float* fVolume, BOOL* bMute, BOOL IsMixer)///////////////////////////��ȡ/���ô�������
+BOOL GetSetVolume(BOOL bSet, HWND hWnd, DWORD dwProcessId, float* fVolume, BOOL* bMute, BOOL IsMixer)
 {
 	DWORD dwCProcessId = -1;
 	if (hWnd)
@@ -714,7 +714,7 @@ BOOL GetSetVolume(BOOL bSet, HWND hWnd, DWORD dwProcessId, float* fVolume, BOOL*
 	CoUninitialize();
 	return ret;
 }
-BOOL EnableDebugPrivilege(BOOL bEnableDebugPrivilege)//DEBUG��Ȩ
+BOOL EnableDebugPrivilege(BOOL bEnableDebugPrivilege)
 {
 	HANDLE hToken;
 	TOKEN_PRIVILEGES tp;
@@ -737,7 +737,7 @@ BOOL EnableDebugPrivilege(BOOL bEnableDebugPrivilege)//DEBUG��Ȩ
 	}
 	return FALSE;
 }
-BOOL IsUserAdmin()//�ж����Թ���ԱȨ������
+BOOL IsUserAdmin()
 {
 	//	IsUserAnAdmin();
 	BOOL b;
@@ -754,7 +754,7 @@ BOOL IsUserAdmin()//�ж����Թ���ԱȨ������
 	}
 	return(b);
 }
-void SetToCurrentPath()////////////////////////////////////���õ�ǰ����Ϊ��ǰĿ¼
+void SetToCurrentPath()
 {
 	WCHAR szDir[MAX_PATH];
 	GetModuleFileName(NULL, szDir, MAX_PATH);
@@ -769,7 +769,7 @@ void SetToCurrentPath()////////////////////////////////////���õ�ǰ��
 		}
 	}
 }
-BOOL RunProcess(LPTSTR szExe, const WCHAR* szCommandLine,HANDLE *pProcess)/////////////////////////////////���г���
+BOOL RunProcess(LPTSTR szExe, const WCHAR* szCommandLine,HANDLE *pProcess)
 {
 	BOOL ret = FALSE;
 	STARTUPINFO StartInfo;
@@ -791,12 +791,12 @@ BOOL RunProcess(LPTSTR szExe, const WCHAR* szCommandLine,HANDLE *pProcess)//////
 	szLine[0] = L'\0';
 	if(szCommandLine)
 		lstrcpy(szLine, szCommandLine);
-	ret = CreateProcess(sz,// RUN_TEST.batλ�ڹ�������Ŀ¼��
+	ret = CreateProcess(sz,
 		szLine,
 		NULL,
 		NULL,
 		FALSE,
-		NULL,// ���ﲻΪ�ý��̴���һ������̨����
+		NULL,
 		NULL,
 		NULL,
 		&StartInfo, &procStruct);
@@ -808,7 +808,7 @@ BOOL RunProcess(LPTSTR szExe, const WCHAR* szCommandLine,HANDLE *pProcess)//////
 //	SetTimer(hMain, 11, 1000, NULL);
 	return ret;
 }
-void SetTaskScheduler(BOOL bDelAdd, const WCHAR* szName)///////////////////////////////////���ÿ�������ƻ�/ɾ������ƻ�
+void SetTaskScheduler(BOOL bDelAdd, const WCHAR* szName)
 {
 	SetToCurrentPath();
 	WCHAR szDelSchtasks[MAX_PATH];
@@ -862,7 +862,7 @@ void SetTaskScheduler(BOOL bDelAdd, const WCHAR* szName)////////////////////////
 		//		RunProcess(szRunSchtasks);
 	}
 }
-BOOL AutoRun(BOOL GetSet, BOOL bAutoRun,const WCHAR* szName)//��ȡ�����ÿ���������رտ������
+BOOL AutoRun(BOOL GetSet, BOOL bAutoRun,const WCHAR* szName)
 {
 //	UninstallService();
 	BOOL ret = FALSE;
@@ -913,13 +913,13 @@ BOOL AutoRun(BOOL GetSet, BOOL bAutoRun,const WCHAR* szName)//��ȡ����
 		if (GetSet)
 		{
 			HKEY pKey;
-			RegOpenKeyEx(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", NULL, KEY_ALL_ACCESS, &pKey);
+		RegOpenKeyEx(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", NULL, KEY_WRITE, &pKey);
 			if (pKey)
 			{
 				RegDeleteValue(pKey, szName);
 				RegCloseKey(pKey);
 			}
-			RegOpenKeyEx(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", NULL, KEY_ALL_ACCESS, &pKey);
+		RegOpenKeyEx(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", NULL, KEY_WRITE, &pKey);
 			if (pKey)
 			{
 				RegDeleteValue(pKey, szName);
@@ -945,7 +945,7 @@ BOOL AutoRun(BOOL GetSet, BOOL bAutoRun,const WCHAR* szName)//��ȡ����
 	else
 	{
 		HKEY pKey;
-		RegOpenKeyEx(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", NULL, KEY_ALL_ACCESS, &pKey);
+		RegOpenKeyEx(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", NULL, KEY_READ | KEY_WRITE, &pKey);
 		if (pKey)
 		{
 			if (GetSet)
@@ -980,7 +980,7 @@ BOOL AutoRun(BOOL GetSet, BOOL bAutoRun,const WCHAR* szName)//��ȡ����
 	}
 	return ret;
 }
-BOOL SetWindowCompositionAttribute(HWND hWnd, ACCENT_STATE mode, DWORD AlphaColor,BOOL bWin11)//���ô���WIN10���
+BOOL SetWindowCompositionAttribute(HWND hWnd, ACCENT_STATE mode, DWORD AlphaColor,BOOL bWin11)
 {
 	pfnSetWindowCompositionAttribute pSetWindowCompositionAttribute = NULL;
 	if (mode == ACCENT_DISABLED)
@@ -1034,7 +1034,7 @@ BOOL GetWindowCompositionAttribute(HWND hWnd, ACCENT_POLICY * accent)
 	return ret;
 }
 */
-BOOL GetProcessFileName(DWORD dwProcessId, LPTSTR pszFileName, DWORD dwFileNameLength)////////////////////////ͨ��ID��ȡ����·���ļ���
+BOOL GetProcessFileName(DWORD dwProcessId, LPTSTR pszFileName, DWORD dwFileNameLength)
 {
 	BOOL bResult = false;
 	HANDLE hProc = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, dwProcessId);
@@ -1066,7 +1066,7 @@ BOOL GetProcessFileName(DWORD dwProcessId, LPTSTR pszFileName, DWORD dwFileNameL
 	}
 	return bResult;
 }
-bool GetFileNameFromWindowHandle(HWND hWnd, LPTSTR lpFileName, DWORD dwFileNameLength)////////////////�ô��ڻ�ȡ����·���ļ���
+bool GetFileNameFromWindowHandle(HWND hWnd, LPTSTR lpFileName, DWORD dwFileNameLength)
 {
 	bool bResult = false;
 	DWORD dwProcessId = 0;
@@ -1101,7 +1101,7 @@ typedef struct PACKAGE_ID {
 #define ARRAY_SIZEOF(array) (sizeof(array)/sizeof(array[0]))
 
 /*
-HICON GetUWPAppIcon(HWND hWnd, UINT uiIconSize = 32)////////////////////////////////////��ȡUWP����ͼ��
+HICON GetUWPAppIcon(HWND hWnd, UINT uiIconSize = 32)
 {
 	HICON hIcon = NULL;
 	static LONG(WINAPI * pGetPackageFullName)(HANDLE, UINT32*, PWSTR);
@@ -1295,7 +1295,7 @@ HICON GetIcon(HWND hWnd, BOOL* bUWP, HWND* hUICoreWnd,int IconSize)
 	return hIcon;
 }
 */
-BOOL SetForeground(HWND hWnd)//�����Ϊǰ̨
+BOOL SetForeground(HWND hWnd)
 {
 	bool bResult = false;
 	bool bHung = IsHungAppWindow(hWnd) != 0;
@@ -1329,9 +1329,9 @@ BOOL SetForeground(HWND hWnd)//�����Ϊǰ̨
 	}
 	return bResult;
 	/*
-		int tIdCur = GetWindowThreadProcessId(GetForegroundWindow(), NULL);//��ȡ��ǰ���ھ�����߳�ID
-		int tIdCurProgram = GetWindowThreadProcessId(hWnd,NULL);//��ȡ��ǰ���г����߳�ID
-		BOOL ret=AttachThreadInput(tIdCur, tIdCurProgram, 1);//�Ƿ��ܳɹ��͵�ǰ������������ӵ������������й�;
+		int tIdCur = GetWindowThreadProcessId(GetForegroundWindow(), NULL);
+		int tIdCurProgram = GetWindowThreadProcessId(hWnd,NULL);
+		BOOL ret=AttachThreadInput(tIdCur, tIdCurProgram, 1);
 		SetForegroundWindow(hWnd);
 		AttachThreadInput(tIdCur, tIdCurProgram, 0);
 		return ret;
@@ -1346,7 +1346,7 @@ void lstrlwr(WCHAR* wString, size_t SizeInWords)
 	}
 }
 
-BOOL OpenProcessPath(DWORD dwProcessId)//ͨ������ID�򿪽��̵�·��
+BOOL OpenProcessPath(DWORD dwProcessId)
 {
 	BOOL ret = FALSE;
 	WCHAR szExplorer[MAX_PATH] = L"/select,";
@@ -1363,7 +1363,7 @@ BOOL OpenProcessPath(DWORD dwProcessId)//ͨ������ID�򿪽��̵�
 	}
 	return ret;
 }
-BOOL OpenWindowPath(HWND hWnd)//////////////ͨ�����ڴ򿪽��̵�·��
+BOOL OpenWindowPath(HWND hWnd)
 {
 	BOOL ret = FALSE;
 	DWORD dwProcessId;
@@ -1372,7 +1372,7 @@ BOOL OpenWindowPath(HWND hWnd)//////////////ͨ�����ڴ򿪽��̵�·
 		ret = OpenProcessPath(dwProcessId);
 	return ret;
 }
-HICON OpenProcessIcon(DWORD dProcessID, int cx)//ͨ������ID��ȡICON
+HICON OpenProcessIcon(DWORD dProcessID, int cx)
 {
 	HICON ret = NULL;
 	WCHAR szExe[MAX_PATH];
@@ -1402,7 +1402,7 @@ HICON GetIconForCSIDL(int csidl)
 	}
 	return 0;
 }
-int DrawShadowText(HDC hDC, LPCTSTR lpString, int nCount, LPRECT lpRect, UINT uFormat,COLORREF bColor,BOOL bYes)//������Ӱ����
+int DrawShadowText(HDC hDC, LPCTSTR lpString, int nCount, LPRECT lpRect, UINT uFormat,COLORREF bColor,BOOL bYes)
 {
 //	COLORREF cColor = GetTextColor(hDC);
 //	return DrawShadowText(hDC, lpString, nCount, lpRect, uFormat, cColor, RGB(18, 18,18), 1, 1);	
@@ -1427,9 +1427,9 @@ int DrawShadowText(HDC hDC, LPCTSTR lpString, int nCount, LPRECT lpRect, UINT uF
 }
 DWORD GetSystemUsesLightTheme()
 {
-	////////////////////////////////////////////////////////////////////////////////////�ж�ϵͳ����ɫ�Ƿ����
+	
 	HKEY pKey;
-	RegOpenKeyEx(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize", NULL, KEY_ALL_ACCESS, &pKey);
+	RegOpenKeyEx(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize", NULL, KEY_READ, &pKey);
 	DWORD dm = -1;
 	if (pKey)
 	{

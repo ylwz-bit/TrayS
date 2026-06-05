@@ -162,6 +162,7 @@ int iDPI = 96;//当前DPI
 BOOL VTray = FALSE;//竖的任务栏
 BOOL bRealClose = FALSE;
 BOOL bSetting = FALSE;
+BOOL bTempDllInitDone = FALSE;
 /////////////////////////////////////////////////获取数据线程
 DWORD WINAPI MainThreadProc(PVOID pParam);
 DWORD WINAPI GetDataThreadProc(PVOID pParam);

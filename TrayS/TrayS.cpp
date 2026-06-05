@@ -535,6 +535,7 @@ WCHAR oldDisk=L'\0';
 int nDisk = -1;
 int GetCpuTemp(DWORD Core)
 {
+	__try {
 	// 优先使用 PawnIO 读取 CPU 温度
 	if (bPawnIoReady && g_pPawnIo)
 	{
@@ -560,6 +561,7 @@ int GetCpuTemp(DWORD Core)
 		return (int)fCpu;
 	}
 	return 0;
+	} __except(EXCEPTION_EXECUTE_HANDLER) { return 0; }
 }
 //////////////////////////////////////////////////载入温度DLL
 void LoadTemperatureDLL()
