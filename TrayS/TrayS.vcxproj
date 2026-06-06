@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -135,7 +135,7 @@
       <AdditionalOptions>/Gs32768 %(AdditionalOptions)</AdditionalOptions>
       <ExceptionHandling>false</ExceptionHandling>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
-      <WholeProgramOptimization>false</WholeProgramOptimization>
+      <WholeProgramOptimization>true</WholeProgramOptimization>
       <OmitFramePointers>false</OmitFramePointers>
       <LanguageStandard />
       <DiagnosticsFormat>Classic</DiagnosticsFormat>
@@ -149,10 +149,11 @@
       <UACExecutionLevel>RequireAdministrator</UACExecutionLevel>
       <DelayLoadDLLs>OLEAUT32.dll;ole32.dll;</DelayLoadDLLs>
       <SupportUnloadOfDelayLoadedDLL>true</SupportUnloadOfDelayLoadedDLL>
-      <AdditionalDependencies>libucrt.lib;libvcruntime.lib;psapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <ForceFileOutput>MultiplyDefinedSymbolOnly</ForceFileOutput>
+      <AdditionalDependencies>libucrt.lib;libvcruntime.lib;%(AdditionalDependencies)psapi.lib</AdditionalDependencies>
+      
+      
       <MergeSections>.rdata=.text</MergeSections>
-      <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
+      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
       <MinimumRequiredVersion>5.01</MinimumRequiredVersion>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
       <IgnoreAllDefaultLibraries>
@@ -183,7 +184,7 @@
       <MultiProcessorCompilation>
       </MultiProcessorCompilation>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
-      <WholeProgramOptimization>false</WholeProgramOptimization>
+      <WholeProgramOptimization>true</WholeProgramOptimization>
       <DiagnosticsFormat>Column</DiagnosticsFormat>
       <AdditionalOptions>/Gs32768 %(AdditionalOptions)</AdditionalOptions>
       <CompileAsWinRT>
@@ -199,16 +200,17 @@
       </HeapReserveSize>
       <StackReserveSize>
       </StackReserveSize>
-      <AdditionalDependencies>libucrt.lib;libvcruntime.lib;psapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libucrt.lib;libvcruntime.lib;%(AdditionalDependencies)psapi.lib</AdditionalDependencies>
+      
       <DelayLoadDLLs>user32.dll;gdi32.dll;advapi32.dll;OLEAUT32.dll;ole32.dll;</DelayLoadDLLs>
       <IgnoreSpecificDefaultLibraries></IgnoreSpecificDefaultLibraries>
-      <ForceFileOutput>MultiplyDefinedSymbolOnly</ForceFileOutput>
+      
       <MergeSections>.rdata=.text</MergeSections>
       <EntryPointSymbol>
       </EntryPointSymbol>
       <AdditionalOptions>
       </AdditionalOptions>
-      <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
+      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
       <MinimumRequiredVersion>5.01</MinimumRequiredVersion>
       <SupportUnloadOfDelayLoadedDLL>true</SupportUnloadOfDelayLoadedDLL>
     </Link>

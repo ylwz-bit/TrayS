@@ -800,26 +800,7 @@ void OpenSetting()
 	SetForegroundWindow(hSetting);
 }
 
-#ifndef _DEBUG
-// Release entry point: properly forward to wWinMain
-extern "C" void WinMainCRTStartup()
-{
-	LPWSTR lpCmdLine = GetCommandLineW();
-	if (lpCmdLine[0] == L'"') {
-		while (*++lpCmdLine && *lpCmdLine != L'"');
-		if (*lpCmdLine) ++lpCmdLine;
-	} else {
-		while (*lpCmdLine && *lpCmdLine != L' ' && *lpCmdLine != L'\t') ++lpCmdLine;
-	}
-	while (*lpCmdLine == L' ' || *lpCmdLine == L'\t') ++lpCmdLine;
-	STARTUPINFOW si;
-	GetStartupInfoW(&si);
-	int result = wWinMain(
-		GetModuleHandleW(NULL), NULL, lpCmdLine,
-		(si.dwFlags & STARTF_USESHOWWINDOW) ? si.wShowWindow : SW_SHOWDEFAULT);
-	ExitProcess(result);
-}
-#endif
+// #ifndef _DEBUG - removed custom WinMainCRTStartup, use standard wWinMain
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nCmdShow) {	UNREFERENCED_PARAMETER(hPrevInstance);
 	UNREFERENCED_PARAMETER(lpCmdLine);
 

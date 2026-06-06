@@ -4,7 +4,6 @@
 
 #include <windows.h>
 #include <objbase.h>
-#include <process.h>
 
 // TaskbarBrush enum matching ExplorerTAP's IDL definition
 enum TaskbarBrush : UINT
@@ -47,50 +46,40 @@ public:
 		return instance;
 	}
 
-	// Trigger async TAP initialization (non-blocking, called from timer)
+	// Initialize the TAP - synchronous (CRT handles COM init)
 	BOOL Initialize(HWND hTaskbar)
 	{
 		if (m_pService)
 			return TRUE;
 		if (m_bFailed)
 			return FALSE;
-		if (m_bInitializing)
+		__try
+		{
+			return InitializeInternal(hTaskbar);
+		}
+		__except (EXCEPTION_EXECUTE_HANDLER)
+		{
+			m_bFailed = TRUE;
+			ReleaseResources();
 			return FALSE;
-
-		// Launch TAP injection on a background thread to avoid blocking the UI
-		m_bInitializing = TRUE;
-		m_hInitTaskbar = hTaskbar;
-		HANDLE hThread = (HANDLE)_beginthreadex(NULL, 0, InitThreadProc, this, 0, NULL);
-		if (hThread)
-			CloseHandle(hThread);
-		else
-			m_bInitializing = FALSE;
-		return FALSE;
+		}
 	}
 
 	BOOL SetTransparent(HWND hTaskbar, UINT color = 0)
 	{
-		if (!m_pService)
-		{
-			if (m_bFailed)
-				return FALSE;
-			if (!m_bInitializing)
-				Initialize(hTaskbar);
+		if (!m_pService && !Initialize(hTaskbar))
 			return FALSE;
-		}
+		if (!m_pService)
+			return FALSE;
 		return SUCCEEDED(m_pService->SetTaskbarAppearance(hTaskbar, TaskbarBrush_SolidColor, color));
 	}
 
 	BOOL SetAcrylic(HWND hTaskbar, UINT color)
 	{
-		if (!m_pService)
-		{
-			if (m_bFailed)
-				return FALSE;
-			if (!m_bInitializing)
-				Initialize(hTaskbar);
+		if (!m_pService && !Initialize(hTaskbar))
 			return FALSE;
-		}
+		if (!m_pService)
+			return FALSE;
 		return SUCCEEDED(m_pService->SetTaskbarAppearance(hTaskbar, TaskbarBrush_Acrylic, color));
 	}
 
@@ -110,59 +99,25 @@ public:
 
 	BOOL IsAvailable() const { return m_pService != nullptr; }
 	BOOL HasFailed() const { return m_bFailed; }
-	BOOL IsInitializing() const { return m_bInitializing; }
 
 	void Reset()
 	{
 		ReleaseResources();
 		m_bFailed = FALSE;
-		m_bInitializing = FALSE;
 	}
 
 	~Win11TaskbarManager()
 	{
 		ReleaseResources();
-		DeleteCriticalSection(&m_csInit);
 	}
 
 private:
-	Win11TaskbarManager()
-	{
-		InitializeCriticalSection(&m_csInit);
-	}
+	Win11TaskbarManager() = default;
 	Win11TaskbarManager(const Win11TaskbarManager&) = delete;
 	Win11TaskbarManager& operator=(const Win11TaskbarManager&) = delete;
 
-	// Background thread for TAP injection
-	static unsigned __stdcall InitThreadProc(void* pParam)
-	{
-		Win11TaskbarManager* pThis = (Win11TaskbarManager*)pParam;
-
-		// COM is already initialized on the main thread via OleInitialize.
-		// GetActiveObject is an OLE call that uses the main STA.
-		// We need COM on this thread too for safety.
-		HRESULT hrCom = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
-
-		__try
-		{
-			pThis->InitializeInternal(pThis->m_hInitTaskbar);
-		}
-		__except (EXCEPTION_EXECUTE_HANDLER)
-		{
-			pThis->m_bFailed = TRUE;
-			pThis->ReleaseResources();
-		}
-
-		pThis->m_bInitializing = FALSE;
-
-		if (SUCCEEDED(hrCom))
-			CoUninitialize();
-		return 0;
-	}
-
 	void ReleaseResources()
 	{
-		EnterCriticalSection(&m_csInit);
 		if (m_pService)
 		{
 			m_pService->Release();
@@ -173,21 +128,25 @@ private:
 			FreeLibrary(m_hTAPDll);
 			m_hTAPDll = nullptr;
 		}
-		LeaveCriticalSection(&m_csInit);
 	}
 
 	BOOL InitializeInternal(HWND hTaskbar)
 	{
+		// Load ExplorerTAP.dll - match 1.4.5 loading strategy
 		if (!m_hTAPDll)
 		{
 			WCHAR szPath[MAX_PATH] = {};
 			GetModuleFileName(NULL, szPath, MAX_PATH);
 			WCHAR* pSlash = NULL;
-			for (WCHAR* p = szPath; *p; p++) { if (*p == L'\\' || *p == L'/') pSlash = p; }
+			for (WCHAR* p = szPath; *p; p++) { if (*p == L'\\') pSlash = p; }
 			if (pSlash)
 			{
 				wcscpy_s(pSlash + 1, MAX_PATH - (pSlash + 1 - szPath), L"ExplorerTAP.dll");
-				m_hTAPDll = LoadLibraryExW(szPath, NULL, LOAD_LIBRARY_SEARCH_APPLICATION_DIR);
+				m_hTAPDll = LoadLibrary(szPath);
+			}
+			if (!m_hTAPDll)
+			{
+				m_hTAPDll = LoadLibrary(L"ExplorerTAP.dll");
 			}
 			if (!m_hTAPDll)
 			{
@@ -220,7 +179,4 @@ private:
 	HMODULE m_hTAPDll = nullptr;
 	ITaskbarAppearanceService* m_pService = nullptr;
 	BOOL m_bFailed = FALSE;
-	BOOL m_bInitializing = FALSE;
-	HWND m_hInitTaskbar = NULL;
-	CRITICAL_SECTION m_csInit = {};
 };
