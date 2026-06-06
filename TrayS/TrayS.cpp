@@ -8,6 +8,7 @@
 
 #include "framework.h"
 #include "TrayS.h"
+#include "Win11Taskbar.h"
 COLORREF oPixelColor;
 HDC hDesktopDC=NULL;
 int DPI(int pixel)
@@ -1001,6 +1002,11 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 	if (RtlGetVersion)
 		RtlGetVersion(&rovi);
 	ReadReg();
+	// Pre-init Win11 TAP (avoid 35s block in timer callback)
+	if (hWin11UI && TraySave.bTrayStyle)
+	{
+		Win11TaskbarManager::Instance().Initialize(hTray);
+	}
 	if(!TraySave.bMonitorTips||!TraySave.bMonitor||TraySave.bMonitorTransparent)
 		EnumWindows((WNDENUMPROC)FindSettingWindowFunc, 0);
 	hMutex = CreateMutex(NULL, TRUE, L"_TrayS_");
