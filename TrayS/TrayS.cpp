@@ -4022,17 +4022,22 @@ INT_PTR CALLBACK MainProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 	{
 		KillTimer(hDlg, 6);
 		KillTimer(hDlg, 3);
-		SendMessage(hReBarWnd, WM_SETREDRAW, TRUE, 0);
-		HWND hSecondaryTray;
-		hSecondaryTray = FindWindow(szSecondaryTray, NULL);
-		while (hSecondaryTray)
+		if (TrayData && TrayData->bExit)
 		{
-			HWND hSReBarWnd = FindWindowEx(hSecondaryTray, 0, L"WorkerW", NULL);
-			SendMessage(hSReBarWnd, WM_SETREDRAW, TRUE, 0);
-			ShowWindow(hSReBarWnd, SW_SHOWNOACTIVATE);
-			hSecondaryTray = FindWindowEx(NULL, hSecondaryTray, szSecondaryTray, NULL);
+			// Restore taskbar to native style only on true exit
+			Win11TaskbarManager::Instance().RestoreAll();
+			SendMessage(hReBarWnd, WM_SETREDRAW, TRUE, 0);
+			HWND hSecondaryTray;
+			hSecondaryTray = FindWindow(szSecondaryTray, NULL);
+			while (hSecondaryTray)
+			{
+				HWND hSReBarWnd = FindWindowEx(hSecondaryTray, 0, L"WorkerW", NULL);
+				SendMessage(hSReBarWnd, WM_SETREDRAW, TRUE, 0);
+				ShowWindow(hSReBarWnd, SW_SHOWNOACTIVATE);
+				hSecondaryTray = FindWindowEx(NULL, hSecondaryTray, szSecondaryTray, NULL);
+			}
+			ShowWindow(hTaskListWnd, SW_SHOW);
 		}
-		ShowWindow(hTaskListWnd, SW_SHOW);
 		PostQuitMessage(0);
 	}
 	break;
@@ -4491,8 +4496,9 @@ INT_PTR CALLBACK SettingProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 						return (INT_PTR)TRUE;
 			*/
 			//			SendMessage(hReBarWnd, WM_SETREDRAW, TRUE, 0);
-			bRealClose = TRUE;
-			SendMessage(hMain, WM_CLOSE, NULL, NULL);
+			// Close settings dialog only, do not exit process
+			bSetting = FALSE;
+			DestroyWindow(hDlg);
 			return (INT_PTR)TRUE;
 		}
 		else if (LOWORD(wParam) == IDC_CLOSE)
