@@ -4024,7 +4024,7 @@ INT_PTR CALLBACK MainProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 		KillTimer(hDlg, 3);
 		if (TrayData && TrayData->bExit)
 		{
-			// Restore taskbar to native style only on true exit
+			// 真正退出时：恢复任务栏原生样式
 			Win11TaskbarManager::Instance().RestoreAll();
 			SendMessage(hReBarWnd, WM_SETREDRAW, TRUE, 0);
 			HWND hSecondaryTray;
@@ -4496,7 +4496,7 @@ INT_PTR CALLBACK SettingProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 						return (INT_PTR)TRUE;
 			*/
 			//			SendMessage(hReBarWnd, WM_SETREDRAW, TRUE, 0);
-			// Close settings dialog only, do not exit process
+			// 只关闭设置窗口，不退出进程（guardian 不重启）
 			bSetting = FALSE;
 			DestroyWindow(hDlg);
 			return (INT_PTR)TRUE;

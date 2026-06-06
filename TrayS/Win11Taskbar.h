@@ -1,11 +1,11 @@
 ﻿#pragma once
-// Win11 Taskbar Appearance Provider - integration with ExplorerTAP.dll
-// Uses TranslucentTB's injection mechanism to achieve taskbar transparency on Win11 22H2+
+// Win11 任务栏外观提供器 - 集成 ExplorerTAP.dll
+// 使用 TranslucentTB 的注入机制实现 Win11 22H2+ 任务栏透明
 
 #include <windows.h>
 #include <objbase.h>
 
-#ifdef _DEBUG
+#ifdef _DEBUG  // 调试版：写入日志文件，带时间戳
 static void TAPLog(const WCHAR* msg)
 {
 	WCHAR szPath[MAX_PATH] = {};
@@ -32,11 +32,11 @@ static void TAPLog(const WCHAR* msg)
 		CloseHandle(hLog);
 	}
 }
-#else
+#else  // 发布版：空函数，零开销
 static void TAPLog(const WCHAR*) {}
 #endif
 
-// TaskbarBrush enum matching ExplorerTAP IDL
+// 任务栏画刷枚举（对应 ExplorerTAP IDL）
 enum TaskbarBrush : UINT
 {
 	TaskbarBrush_Acrylic = 0,
@@ -207,7 +207,7 @@ private:
 			return FALSE;
 		}
 
-		// Ensure COM is initialized on this thread (FreeLibrary in Reset may have cleaned it up)
+		// 确保 COM 已初始化（Reset 中 FreeLibrary 可能已清理）
 		BOOL bComInit = FALSE;
 		HRESULT hrCom = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
 		if (hrCom == S_OK || hrCom == S_FALSE)
@@ -228,7 +228,7 @@ private:
 				return TRUE;
 		}
 
-		// Injection failed - clean up COM if we initialized it
+		// 注入失败 - 清理 COM
 		if (bComInit)
 			CoUninitialize();
 		m_bFailed = TRUE;
