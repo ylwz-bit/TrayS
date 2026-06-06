@@ -443,12 +443,26 @@ void GetShellAllWnd()
 }
 void CloseTaskBar()
 {
+	// 销毁任务栏监控信息窗口 — 先用颜色键色填充使旧像素透明，避免Explorer缓存残留
 	if (IsWindow(hTaskBar))
+	{
+		HDC hdc = GetDC(hTaskBar);
+		RECT rc;
+		GetClientRect(hTaskBar, &rc);
+		HBRUSH hb = CreateSolidBrush(oPixelColor);
+		FillRect(hdc, &rc, hb);
+		DeleteObject(hb);
+		ReleaseDC(hTaskBar, hdc);
 		DestroyWindow(hTaskBar);
+	}
 	if (IsWindow(hTaskTips))
 		DestroyWindow(hTaskTips);
 	if(IsWindow(hTime))
-		DestroyWindow(hTime);	
+		DestroyWindow(hTime);
+	// 强制重置TAP合成器，清除Explorer缓存的残留旧绘制数据
+	// 定时器会在下一秒重新应用透明效果
+	if (IsWindow(hTray) && TraySave.bTrayStyle && hWin11UI)
+		SetWindowCompositionAttribute(hTray, ACCENT_DISABLED, 0, TRUE);
 }
 void OpenTimeDlg()
 {
@@ -1726,7 +1740,8 @@ void SetTaskBarPos(HWND hTaskListWnd, HWND hTrayWnd, HWND hTaskWnd, HWND hReBarW
 		SendMessage(hReBarWnd, WM_SETREDRAW, FALSE, 0);
 	ShowWindow(hTaskWnd, SW_SHOWNOACTIVATE);
 }
-int otleft, ottop;
+
+int otleft, ottop, otWidth, otHeight;
 void SetWH()
 {
 	mWidth = 0;
@@ -1848,6 +1863,8 @@ void SetWH()
 	ReleaseDC(hMain, mdc);
 	ottop = -1;
 	otleft = -1;
+	otWidth = -1;
+	otHeight = -1;
 }
 void AdjustWindowPos()//设置信息窗口位置大小
 {	
@@ -2009,28 +2026,26 @@ void AdjustWindowPos()//设置信息窗口位置大小
 			if (hWin11UI)
 				ntop += 1;
 */
-			if (nleft != otleft || ottop != ntop)
+			if (nleft != otleft || ottop != ntop || mWidth != otWidth || h != otHeight)
 			{
-				/*
-							HDC hdc = GetDC(hTaskBar);
-							RECT crc;
-							GetClientRect(hTaskBar, &crc);
-							HBRUSH hb = CreateSolidBrush(RGB(0, 0, 0));
-							FillRect(hdc, &crc, hb);
-							DeleteObject(hb);
-							ReleaseDC(hTaskBar, hdc);
-				*/
+				// 移动/缩放前用颜色键色填充，防止Explorer缓存旧像素残留
+				{
+					HDC hdc = GetDC(hTaskBar);
+					RECT crc;
+					GetClientRect(hTaskBar, &crc);
+					HBRUSH hb = CreateSolidBrush(oPixelColor);
+					FillRect(hdc, &crc, hb);
+					DeleteObject(hb);
+					ReleaseDC(hTaskBar, hdc);
+				}
 				otleft = nleft;
 				ottop = ntop;
-				//			::InvalidateRect(hTaskBar, NULL, TRUE);
-				//			if (!hWin11UI)
 				if(bFullScreen)
 					SetWindowPos(hTaskBar, HWND_TOPMOST, nleft, ntop, mWidth, h, SWP_NOACTIVATE | SWP_NOREDRAW | SWP_SHOWWINDOW);
 				else
 					MoveWindow(hTaskBar, nleft, ntop, mWidth, h, TRUE);
-				
-				//			else
-				//				SetWindowPos(hTaskBar, HWND_TOPMOST, nleft, ntop, mWidth, h, SWP_NOACTIVATE | SWP_NOREDRAW | SWP_SHOWWINDOW);
+				otWidth = mWidth;
+				otHeight = h;
 			}
 			//		else if(hWin11UI)
 			//			SetWindowPos(hTaskBar, HWND_TOPMOST, nleft, ntop, mWidth, h, SWP_NOACTIVATE|SWP_NOREDRAW|SWP_NOSIZE|SWP_NOMOVE|SWP_SHOWWINDOW);
@@ -2050,23 +2065,26 @@ void AdjustWindowPos()//设置信息窗口位置大小
 			int w = trayrc.right - trayrc.left - 2;
 			if (bFullScreen)
 				nleft = trayrc.left + 1;
-			if (ntop != ottop || otleft != w)
+			if (ntop != ottop || otleft != w || mHeight != otHeight)
 			{
-				/*
-							HDC hdc = GetDC(hTaskBar);
-							RECT crc;
-							GetClientRect(hTaskBar, &crc);
-							HBRUSH hb = CreateSolidBrush(RGB(0, 0, 0));
-							FillRect(hdc, &crc, hb);
-							DeleteObject(hb);
-							ReleaseDC(hTaskBar, hdc);
-				*/
+				// 移动/缩放前用颜色键色填充，防止Explorer缓存旧像素残留
+				{
+					HDC hdc = GetDC(hTaskBar);
+					RECT crc;
+					GetClientRect(hTaskBar, &crc);
+					HBRUSH hb = CreateSolidBrush(oPixelColor);
+					FillRect(hdc, &crc, hb);
+					DeleteObject(hb);
+					ReleaseDC(hTaskBar, hdc);
+				}
 				ottop = ntop;
 				otleft = w;
 				if (bFullScreen)
 					SetWindowPos(hTaskBar, HWND_TOPMOST, nleft, ntop, w, mHeight, SWP_NOACTIVATE | SWP_NOREDRAW | SWP_SHOWWINDOW);
 				else
 					MoveWindow(hTaskBar, nleft, ntop, w, mHeight, TRUE);
+				otWidth = w;
+				otHeight = mHeight;
 			}
 		}
 	}
@@ -4022,10 +4040,11 @@ INT_PTR CALLBACK MainProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 	{
 		KillTimer(hDlg, 6);
 		KillTimer(hDlg, 3);
+		// 无条件恢复任务栏原生样式（防止闪退/崩溃后透明效果残留）
+		Win11TaskbarManager::Instance().RestoreAll();
 		if (TrayData && TrayData->bExit)
 		{
-			// 真正退出时：恢复任务栏原生样式
-			Win11TaskbarManager::Instance().RestoreAll();
+			// 正常退出时：恢复任务栏重绘和子窗口显示
 			SendMessage(hReBarWnd, WM_SETREDRAW, TRUE, 0);
 			HWND hSecondaryTray;
 			hSecondaryTray = FindWindow(szSecondaryTray, NULL);
