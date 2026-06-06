@@ -985,14 +985,14 @@ BOOL SetWindowCompositionAttribute(HWND hWnd, ACCENT_STATE mode, DWORD AlphaColo
 {
 	if (mode == ACCENT_DISABLED)
 	{
-		// Win11 TAP: restore default appearance
+	// Win11 TAP: 恢复默认外观
 		if (bWin11)
 			Win11TaskbarManager::Instance().RestoreDefault(hWnd);
 		SendMessage(hWnd, WM_THEMECHANGED, 0, 0);
 		return TRUE;
 	}
 
-	// Win11 22H2+: use ExplorerTAP for taskbar transparency
+		// Win11 22H2+: 使用 ExplorerTAP 实现任务栏透明
 	if (bWin11)
 	{
 		Win11TaskbarManager& tap = Win11TaskbarManager::Instance();
@@ -1006,7 +1006,7 @@ BOOL SetWindowCompositionAttribute(HWND hWnd, ACCENT_STATE mode, DWORD AlphaColo
 			if (ok)
 				return TRUE;
 		}
-		// If TAP failed, fall through to old API
+		// TAP 失败则回退到旧 API
 	}
 
 	pfnSetWindowCompositionAttribute pSetWindowCompositionAttribute = NULL;

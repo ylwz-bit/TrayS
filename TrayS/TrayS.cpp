@@ -801,7 +801,7 @@ void OpenSetting()
 	SetForegroundWindow(hSetting);
 }
 
-// #ifndef _DEBUG - removed custom WinMainCRTStartup, use standard wWinMain
+// 已移除自定义 WinMainCRTStartup，使用标准 wWinMain
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nCmdShow) {	UNREFERENCED_PARAMETER(hPrevInstance);
 	UNREFERENCED_PARAMETER(lpCmdLine);
 
@@ -1002,7 +1002,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 	if (RtlGetVersion)
 		RtlGetVersion(&rovi);
 	ReadReg();
-	// Pre-init Win11 TAP (avoid 35s block in timer callback)
+	// 预初始化 Win11 TAP（避免定时器回调中 35 秒阻塞）
 	if (hWin11UI && TraySave.bTrayStyle)
 	{
 		Win11TaskbarManager::Instance().Initialize(hTray);
@@ -1422,7 +1422,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	abd.uCallbackMessage = MSG_APPBAR_MSGID;
 	pSHAppBarMessage(ABM_NEW, &abd);
 	bThemeMode = GetSystemUsesLightTheme();
-	g_uTaskbarCreated = RegisterWindowMessage(L"TaskbarCreated");
+	g_uTaskbarCreated = RegisterWindowMessage(L"TaskbarCreated");  // 注册资源管理器重启消息
 	//////////////////////////////////////////////////////////////////////////////////设置通知栏图标
 	nid.cbSize = sizeof NOTIFYICONDATA;
 	nid.uID = WM_IAWENTRAY;
@@ -3956,7 +3956,7 @@ INT_PTR CALLBACK MainProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 	{
 		if (TraySave.bTrayIcon)
 			pShell_NotifyIcon(NIM_ADD, &nid);
-		// Explorer restarted - reset Win11 TAP connection and re-find taskbar windows
+		// 资源管理器重启：重置 Win11 TAP 连接并重新查找任务栏窗口
 		if (hWin11UI)
 			Win11TaskbarReset();
 		GetShellAllWnd();
@@ -4642,7 +4642,7 @@ INT_PTR CALLBACK SettingProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 	}
 	return (INT_PTR)FALSE;
 }
-INT_PTR CALLBACK ColorButtonProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+INT_PTR CALLBACK ColorButtonProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)//颜色按钮控件过程
 {
 	switch (message)
 	{
