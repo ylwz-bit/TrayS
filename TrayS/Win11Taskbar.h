@@ -5,7 +5,7 @@
 #include <windows.h>
 #include <objbase.h>
 
-// Debug log helper (file-based, only in Debug builds)
+#ifdef _DEBUG
 static void TAPLog(const WCHAR* msg)
 {
 	WCHAR szPath[MAX_PATH] = {};
@@ -22,10 +22,19 @@ static void TAPLog(const WCHAR* msg)
 	{
 		SetFilePointer(hLog, 0, NULL, FILE_END);
 		DWORD bw = 0;
+		// 写入时间戳
+		SYSTEMTIME st;
+		GetLocalTime(&st);
+		WCHAR ts[64];
+		int len = wsprintfW(ts, L"[%02d:%02d:%02d.%03d] ", st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
+		WriteFile(hLog, ts, (DWORD)(len * sizeof(WCHAR)), &bw, NULL);
 		WriteFile(hLog, msg, (DWORD)(lstrlenW(msg) * sizeof(WCHAR)), &bw, NULL);
 		CloseHandle(hLog);
 	}
 }
+#else
+static void TAPLog(const WCHAR*) {}
+#endif
 
 // TaskbarBrush enum matching ExplorerTAP IDL
 enum TaskbarBrush : UINT
