@@ -351,7 +351,9 @@ int GetPDH(BOOL bCPU, BOOL bDisk)
 }
 int GetCPUUseRate()
 {
-	if (TraySave.bMonitorPDH)
+	// Win10+ 强制使用 PDH 的 % Processor Utility，与任务管理器一致
+	// GetSystemTimes 不考虑频率缩放（睿频/大小核），数值偏低
+	if (TraySave.bMonitorPDH || rovi.dwMajorVersion >= 10)
 	{
 		return GetPDH(TRUE,TraySave.bMonitorDisk);
 	}
