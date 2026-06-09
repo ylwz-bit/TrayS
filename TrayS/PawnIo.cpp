@@ -22,7 +22,10 @@ struct _PAWNIO_CTX {
     pfn_pawnio_load fn_load;
     pfn_pawnio_execute fn_execute;
     BOOL bIntel;
+    BOOL bAMD;
     BOOL bBlobLoaded;
+    BOOL bAmdBlobLoaded;
+    HANDLE hAmdDevice;
 };
 
 // 从文件加载 blob
@@ -122,27 +125,52 @@ PAWNIO_CTX* PawnIo_Init(void)
     // 检测 CPU 厂商
     int cpuInfo[4] = {0};
     __cpuid(cpuInfo, 0);
+    ctx->bIntel = FALSE;
+    ctx->bAMD = FALSE;
     if (cpuInfo[1] == 0x756e6547 && cpuInfo[3] == 0x49656e69 && cpuInfo[2] == 0x6c65746e)
-        ctx->bIntel = TRUE;
-    else
-        ctx->bIntel = FALSE;
+        ctx->bIntel = TRUE;  // GenuineIntel
+    else if (cpuInfo[1] == 0x68747541 && cpuInfo[3] == 0x69746e65 && cpuInfo[2] == 0x444d4163)
+        ctx->bAMD = TRUE;    // AuthenticAMD
 
-    // 加载 IntelMSR.bin 模块
+    // 根据 CPU 厂商加载对应的 Pawn 脚本模块
     ctx->bBlobLoaded = FALSE;
+    ctx->bAmdBlobLoaded = FALSE;
+    ctx->hAmdDevice = NULL;
     WCHAR blobPath[MAX_PATH];
-    GetModuleDir(blobPath, MAX_PATH);
-    wcscat_s(blobPath, L"IntelMSR.bin");
 
-    SIZE_T blobSize = 0;
-    UCHAR* blob = LoadBlobFromFile(blobPath, &blobSize);
-    if (blob && blobSize > 0) {
-        hr = ctx->fn_load(ctx->hDevice, blob, blobSize);
-        if (SUCCEEDED(hr))
-            ctx->bBlobLoaded = TRUE;
-        HeapFree(GetProcessHeap(), 0, blob);
+    if (ctx->bAMD) {
+        // AMD: 打开额外设备句柄，加载 AMDFamily17.bin
+        hr = ctx->fn_open(&ctx->hAmdDevice);
+        if (SUCCEEDED(hr) && ctx->hAmdDevice != NULL) {
+            GetModuleDir(blobPath, MAX_PATH);
+            wcscat_s(blobPath, L"AMDFamily17.bin");
+            SIZE_T blobSize = 0;
+            UCHAR* blob = LoadBlobFromFile(blobPath, &blobSize);
+            if (blob && blobSize > 0) {
+                hr = ctx->fn_load(ctx->hAmdDevice, blob, blobSize);
+                if (SUCCEEDED(hr))
+                    ctx->bAmdBlobLoaded = TRUE;
+                HeapFree(GetProcessHeap(), 0, blob);
+            }
+        }
     }
 
-    if (!ctx->bBlobLoaded) {
+    // 所有 CPU 都加载 IntelMSR.bin（Intel 用于 MSR 读取，AMD 作为后备）
+    GetModuleDir(blobPath, MAX_PATH);
+    wcscat_s(blobPath, L"IntelMSR.bin");
+    SIZE_T blobSize2 = 0;
+    UCHAR* blob2 = LoadBlobFromFile(blobPath, &blobSize2);
+    if (blob2 && blobSize2 > 0) {
+        hr = ctx->fn_load(ctx->hDevice, blob2, blobSize2);
+        if (SUCCEEDED(hr))
+            ctx->bBlobLoaded = TRUE;
+        HeapFree(GetProcessHeap(), 0, blob2);
+    }
+
+    // 至少要有一个 blob 加载成功
+    if (!ctx->bBlobLoaded && !ctx->bAmdBlobLoaded) {
+        if (ctx->hAmdDevice && ctx->fn_close)
+            ctx->fn_close(ctx->hAmdDevice);
         ctx->fn_close(ctx->hDevice);
         FreeLibrary(ctx->hDll);
         HeapFree(GetProcessHeap(), 0, ctx);
@@ -155,6 +183,8 @@ PAWNIO_CTX* PawnIo_Init(void)
 void PawnIo_Free(PAWNIO_CTX* ctx)
 {
     if (!ctx) return;
+    if (ctx->hAmdDevice && ctx->fn_close)
+        ctx->fn_close(ctx->hAmdDevice);
     if (ctx->hDevice && ctx->fn_close)
         ctx->fn_close(ctx->hDevice);
     if (ctx->hDll)
@@ -173,6 +203,23 @@ BOOL PawnIo_ReadMsr(PAWNIO_CTX* ctx, DWORD msr, ULONGLONG* pValue)
     HRESULT hr = ctx->fn_execute(ctx->hDevice, "ioctl_read_msr", in, 1, out, 1, &returned);
     if (SUCCEEDED(hr) && returned >= 1) {
         *pValue = out[0];
+        return TRUE;
+    }
+    return FALSE;
+}
+
+// AMD: 通过 AMDFamily17.bin 读取 SMN 寄存器
+BOOL PawnIo_ReadSmn(PAWNIO_CTX* ctx, DWORD offset, DWORD* pValue)
+{
+    if (!ctx || !ctx->fn_execute || !ctx->bAmdBlobLoaded || !ctx->hAmdDevice || !pValue)
+        return FALSE;
+
+    ULONG64 in[1] = { offset };
+    ULONG64 out[1] = { 0 };
+    SIZE_T returned = 0;
+    HRESULT hr = ctx->fn_execute(ctx->hAmdDevice, "ioctl_read_smn", in, 1, out, 1, &returned);
+    if (SUCCEEDED(hr) && returned >= 1) {
+        *pValue = (DWORD)(out[0] & 0xFFFFFFFF);
         return TRUE;
     }
     return FALSE;
@@ -203,6 +250,7 @@ int PawnIo_GetCpuTemp(PAWNIO_CTX* ctx, DWORD core)
     if (!ctx) return 0;
 
     if (ctx->bIntel) {
+        // Intel: MSR 0x19C (IA32_THERM_STATUS) + 0x1A2 (TjMax)
         ULONGLONG msrVal = 0;
         int Tjunction = 100;
         if (PawnIo_ReadMsr(ctx, 0x1A2, &msrVal)) {
@@ -217,10 +265,31 @@ int PawnIo_GetCpuTemp(PAWNIO_CTX* ctx, DWORD core)
             }
         }
     }
+    else if (ctx->bAMD && ctx->bAmdBlobLoaded) {
+        // AMD Family 17h+: 通过 SMN 读取 THM_TCON_CUR_TMP (0x00059800)
+        // bits [31:21] = 温度值, * 125 = 毫摄氏度
+        // bit 19 (RANGE_SEL) 或 bits [17:16] (TJ_SEL) 置位时需 -49 偏移
+        DWORD smnVal = 0;
+        if (PawnIo_ReadSmn(ctx, 0x00059800, &smnVal)) {
+            bool tempOffsetFlag = (smnVal & 0x80000) != 0 || (smnVal & 0x30000) == 0x30000;
+            DWORD rawTemp = (smnVal >> 21) & 0x7FF;
+            float t = rawTemp * 0.125f;
+            if (tempOffsetFlag)
+                t += -49.0f;
+            int temp = (int)t;
+            if (temp > 0 && temp < 150)
+                return temp;
+        }
+    }
     return 0;
 }
 
 BOOL PawnIo_IsIntel(PAWNIO_CTX* ctx)
 {
     return ctx ? ctx->bIntel : FALSE;
+}
+
+BOOL PawnIo_IsAMD(PAWNIO_CTX* ctx)
+{
+    return ctx ? ctx->bAMD : FALSE;
 }

@@ -46,6 +46,12 @@ int PawnIo_GetCpuTemp(PAWNIO_CTX* ctx, DWORD core);
 // 检查是否为 Intel CPU
 BOOL PawnIo_IsIntel(PAWNIO_CTX* ctx);
 
+// 检查是否为 AMD CPU
+BOOL PawnIo_IsAMD(PAWNIO_CTX* ctx);
+
+// AMD: 读取 SMN 寄存器（通过 AMDFamily17.bin）
+BOOL PawnIo_ReadSmn(PAWNIO_CTX* ctx, DWORD offset, DWORD* pValue);
+
 #ifdef __cplusplus
 }
 #endif
