@@ -1,4 +1,4 @@
-﻿// 这是主 DLL 文件。
+// 这是主 DLL 文件。
 
 #include "stdafx.h"
 
@@ -175,17 +175,23 @@ namespace OpenHardwareMonitorApi
             if (hardware->Sensors[i]->SensorType == SensorType::Temperature)
             {
                 String^ name = hardware->Sensors[i]->Name;
+                // 排除干扰传感器: Distance to TjMax 不是实际温度
+                if (name->Contains("Distance"))
+                    continue;
                 //保存每个CPU传感器的温度
                 m_all_cpu_temperature[ClrStringToStdWstring(name)] = Convert::ToDouble(hardware->Sensors[i]->Value);
             }
         }
-        //计算平均温度
+        //取所有核心传感器的最大值（与LiteMonitor策略一致，更准确）
         if (!m_all_cpu_temperature.empty())
         {
-            float sum{};
+            float max_temp = -1.0f;
             for (const auto& item : m_all_cpu_temperature)
-                sum += item.second;
-            temperature = sum / m_all_cpu_temperature.size();
+            {
+                if (item.second > max_temp)
+                    max_temp = item.second;
+            }
+            temperature = max_temp;
         }
         return temperature > 0;
     }

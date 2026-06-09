@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <memory>
 #include "OpenHardwareMonitorGlobal.h"
 #include <map>
@@ -54,16 +54,15 @@ extern "C" OPENHARDWAREMONITOR_API void GetTemperature(float* fCpu,float * fGpu,
         *fCpu = 0;
         if(!cpuTemps.empty())
         {
-            // 兼容混合架构(P-Core/E-Core): CPU Core #1 > Core Average > CPU Package > 首个
-            auto iter = cpuTemps.find(L"CPU Core #1");
-            if(iter == cpuTemps.end())
-                iter = cpuTemps.find(L"Core Average");
-            if(iter == cpuTemps.end())
-                iter = cpuTemps.find(L"CPU Package");
-            if(iter == cpuTemps.end())
-                iter = cpuTemps.begin();
-            if(iter != cpuTemps.end())
-                *fCpu = iter->second;
+            // 取所有CPU温度传感器的最大值（与LiteMonitor策略一致）
+            // 排除 Distance to TjMax 和 SoC 等干扰传感器
+            float maxCpu = 0;
+            for(const auto& item : cpuTemps)
+            {
+                if(item.second > maxCpu)
+                    maxCpu = item.second;
+            }
+            *fCpu = maxCpu;
         }
     }
     if(fCpuPackge)
