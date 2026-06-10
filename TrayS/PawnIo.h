@@ -19,3 +19,4 @@ int PawnIo_IsInstalled(void);
 BOOL PawnIo_ReadMsr(PIORUNTIME* pRuntime, DWORD index, DWORD* pEax, DWORD* pEdx);
 BOOL PawnIo_ReadSmn(PIORUNTIME* pRuntime, DWORD offset, DWORD* pValue);
 int PawnIo_GetCpuTemp(PIORUNTIME* pRuntime, DWORD Core);
+int PawnIo_GetCpuPackageTemp(PIORUNTIME* pRuntime);

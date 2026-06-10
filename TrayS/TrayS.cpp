@@ -52,6 +52,46 @@ BOOL CALLBACK IsZoomedFunc(HWND hWnd, LPARAM lpAram)////是否有最大化窗口
 	}
 	return TRUE;
 }
+
+BOOL IsForegroundFullscreenWindow()
+{
+	HWND hWnd = GetForegroundWindow();
+	if (!hWnd || hWnd == hMain || hWnd == hTaskBar || hWnd == hTime || hWnd == hSetting)
+		return FALSE;
+	if (!IsWindowVisible(hWnd) || IsIconic(hWnd))
+		return FALSE;
+
+	DWORD pid = 0;
+	GetWindowThreadProcessId(hWnd, &pid);
+	if (pid == GetCurrentProcessId())
+		return FALSE;
+
+	WCHAR szClassName[64] = { 0 };
+	GetClassName(hWnd, szClassName, ARRAYSIZE(szClassName));
+	if (lstrcmp(szClassName, L"Shell_TrayWnd") == 0 ||
+		lstrcmp(szClassName, L"Shell_SecondaryTrayWnd") == 0 ||
+		lstrcmp(szClassName, L"Progman") == 0 ||
+		lstrcmp(szClassName, L"WorkerW") == 0)
+		return FALSE;
+
+	RECT rc = { 0 };
+	if (!GetWindowRect(hWnd, &rc))
+		return FALSE;
+
+	HMONITOR hMonitor = MonitorFromWindow(hWnd, MONITOR_DEFAULTTONULL);
+	if (!hMonitor)
+		return FALSE;
+
+	MONITORINFO mi = { sizeof(mi) };
+	if (!GetMonitorInfo(hMonitor, &mi))
+		return FALSE;
+
+	const int tolerance = 2;
+	return rc.left <= mi.rcMonitor.left + tolerance &&
+		rc.top <= mi.rcMonitor.top + tolerance &&
+		rc.right >= mi.rcMonitor.right - tolerance &&
+		rc.bottom >= mi.rcMonitor.bottom - tolerance;
+}
 /*
 BOOL CreateProcessByExplorer(LPCWSTR process, LPCWSTR szDir, LPCWSTR cmd)
 {
@@ -429,6 +469,26 @@ void WriteReg()//写入设置
 		CloseHandle(hFile);
 	}
 }
+
+void ApplyWin11TaskbarAlignment()
+{
+	if (rovi.dwBuildNumber < 22000)
+		return;
+
+	DWORD alignment = TraySave.iPos == 0 ? 0 : 1;
+	HKEY hKey = NULL;
+	if (RegCreateKeyEx(HKEY_CURRENT_USER,
+		L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+		0, NULL, 0, KEY_SET_VALUE, NULL, &hKey, NULL) == ERROR_SUCCESS)
+	{
+		RegSetValueEx(hKey, L"TaskbarAl", 0, REG_DWORD, (const BYTE*)&alignment, sizeof(alignment));
+		RegCloseKey(hKey);
+	}
+
+	SendMessageTimeout(HWND_BROADCAST, WM_SETTINGCHANGE, 0,
+		(LPARAM)L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+		SMTO_ABORTIFHUNG, 1000, NULL);
+}
 void GetShellAllWnd()
 {
 	while (IsWindow(hTray) == FALSE)
@@ -557,6 +617,13 @@ int GetCpuTemp(DWORD Core)
 		return PawnIo_GetCpuTemp(&g_PawnIo, Core);
 	}
 	return 0;
+}
+
+int GetCpuPackageTemp()
+{
+	if (!bPawnIoReady)
+		return 0;
+	return PawnIo_GetCpuPackageTemp(&g_PawnIo);
 }
 //////////////////////////////////////////////////载入温度DLL
 void LoadTemperatureDLL()
@@ -689,13 +756,6 @@ void OpenSetting()
 		CheckRadioButton(hSetting, IDC_RADIO_LEFT, IDC_RADIO_RIGHT, IDC_RADIO_CENTER);
 	else if (TraySave.iPos == 2)
 		CheckRadioButton(hSetting, IDC_RADIO_LEFT, IDC_RADIO_RIGHT, IDC_RADIO_RIGHT);
-	if (hWin11UI)
-	{
-		EnableWindow(GetDlgItem(hSetting, IDC_RADIO_LEFT), FALSE);
-		EnableWindow(GetDlgItem(hSetting, IDC_RADIO_CENTER), FALSE);
-		EnableWindow(GetDlgItem(hSetting, IDC_RADIO_RIGHT), FALSE);
-//		EnableWindow(GetDlgItem(hSetting, IDC_CHECK_TOPMOST), TRUE);
-	}
 	if (LOWORD(TraySave.iUnit) == 0)
 		CheckRadioButton(hSetting, IDC_RADIO_AUTO, IDC_RADIO_MB, IDC_RADIO_AUTO);
 	else if (LOWORD(TraySave.iUnit) == 1)
@@ -988,6 +1048,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		RtlGetVersion(&rovi);
 	InitializeCriticalSection(&g_csData);
 	ReadReg();
+	ApplyWin11TaskbarAlignment();
 	if(!TraySave.bMonitorTips||!TraySave.bMonitor||TraySave.bMonitorTransparent)
 		EnumWindows((WNDENUMPROC)FindSettingWindowFunc, 0);
 	hMutex = CreateMutex(NULL, TRUE, L"_TrayS_");
@@ -1154,42 +1215,42 @@ DWORD WINAPI GetDataThreadProc(PVOID pParam)//获取温度占用硬盘线程
 			EnterCriticalSection(&g_csData);
 			if (bPawnIoReady)
 			{
-				TrayData->iTemperature1 = GetCpuTemp(1);
-				}
-				// GPU温度 (通过NvAPI/ADL, 不依赖PawnIO)
+				TrayData->iTemperature1 = GetCpuPackageTemp();
+			}
+			// GPU温度 (通过NvAPI/ADL, 不依赖PawnIO)
+			{
+				int iATITemperature = 0;
+				int iNVTemperature = 0;
+				if (hNVDLL)
 				{
-					int iATITemperature = 0;
-					int iNVTemperature = 0;
-					if (hNVDLL)
+					NV_GPU_THERMAL_SETTINGS currentTemp;
+					currentTemp.version = NV_GPU_THERMAL_SETTINGS_VER;
+					for (int GpuIndex = 0; GpuIndex < 4; GpuIndex++)
 					{
-						NV_GPU_THERMAL_SETTINGS currentTemp;
-						currentTemp.version = NV_GPU_THERMAL_SETTINGS_VER;
-						for (int GpuIndex = 0; GpuIndex < 4; GpuIndex++)
+						if (NvAPI_GPU_GetThermalSettings(hPhysicalGpu[GpuIndex], 15, &currentTemp) == 0)
 						{
-							if (NvAPI_GPU_GetThermalSettings(hPhysicalGpu[GpuIndex], 15, &currentTemp) == 0)
-							{
-								iNVTemperature = currentTemp.sensor[0].currentTemp;
-								break;
-							}
+							iNVTemperature = currentTemp.sensor[0].currentTemp;
+							break;
 						}
 					}
-					if (hATIDLL)
-					{
-						adlTemperature.iSize = sizeof(ADLTemperature);
-						ADL_Overdrive5_Temperature_Get(0, 0, &adlTemperature);
-						iATITemperature = adlTemperature.iTemperature / 1000;
-					}
-					if (iATITemperature != 0 || iNVTemperature != 0)
-					{
-						if (iATITemperature > iNVTemperature)
-							TrayData->iTemperature2 = iATITemperature;
-						else
-							TrayData->iTemperature2 = iNVTemperature;
-					}
-					else if (bPawnIoReady)
-					{
-						// 无独立显卡温度时，用CPU温度作为备选
-						TrayData->iTemperature2 = GetCpuTemp(dNumProcessor);
+				}
+				if (hATIDLL)
+				{
+					adlTemperature.iSize = sizeof(ADLTemperature);
+					ADL_Overdrive5_Temperature_Get(0, 0, &adlTemperature);
+					iATITemperature = adlTemperature.iTemperature / 1000;
+				}
+				if (iATITemperature != 0 || iNVTemperature != 0)
+				{
+					if (iATITemperature > iNVTemperature)
+						TrayData->iTemperature2 = iATITemperature;
+					else
+						TrayData->iTemperature2 = iNVTemperature;
+				}
+				else if (bPawnIoReady)
+				{
+					// 无独立显卡温度时，用CPU温度作为备选
+					TrayData->iTemperature2 = TrayData->iTemperature1;
 				}
 			}
 			LeaveCriticalSection(&g_csData);
@@ -1876,10 +1937,22 @@ void AdjustWindowPos()//设置信息窗口位置大小
 		iDPI = dpi;
 		SendMessage(hMain, WM_DPICHANGED, dpi, dpi);
 	}
+	if (bFullScreen || IsForegroundFullscreenWindow())
+	{
+		if (IsWindow(hTaskBar))
+			ShowWindow(hTaskBar, SW_HIDE);
+		if (IsWindow(hTime))
+			ShowWindow(hTime, SW_HIDE);
+		return;
+	}
+	if (!TraySave.bMonitorFloat && rovi.dwBuildNumber < 22000 && IsWindow(hTaskBar) && GetAncestor(hTaskBar, GA_PARENT) != hTray)
+		DestroyWindow(hTaskBar);
 	if (IsWindow(hTaskBar) == FALSE)
 		OpenTaskBar();
 	if (TraySave.bSecond && IsWindow(hTime) == FALSE)
 		OpenTimeDlg();
+	if (IsWindow(hTaskBar) && !IsWindowVisible(hTaskBar))
+		ShowWindow(hTaskBar, SW_SHOW);
 	if (TraySave.bMonitorFloat)
 	{
 		RECT ScreenRect;
@@ -4065,7 +4138,7 @@ INT_PTR CALLBACK MainProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 		{
 			if (TraySave.bTrayStyle)
 			{
-				if ((TraySave.iPos != 0 || TraySave.bMonitor) && hWin11UI == NULL && rovi.dwBuildNumber < 22000)
+				if ((TraySave.iPos != 0 || TraySave.bMonitor) && rovi.dwBuildNumber < 22000 && IsWindow(hTaskListWnd))
 				{
 					//				if (TraySave.bTaskIcon == FALSE)
 					{
@@ -4292,6 +4365,15 @@ INT_PTR CALLBACK SettingProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 			else if (IsDlgButtonChecked(hDlg, IDC_RADIO_RIGHT))
 			{
 				TraySave.iPos = 2;
+			}
+			if (rovi.dwBuildNumber >= 22000)
+			{
+				if (TraySave.iPos == 2)
+				{
+					TraySave.iPos = 1;
+					CheckRadioButton(hDlg, IDC_RADIO_LEFT, IDC_RADIO_RIGHT, IDC_RADIO_CENTER);
+				}
+				ApplyWin11TaskbarAlignment();
 			}
 			WriteReg();
 		}
