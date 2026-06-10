@@ -222,10 +222,35 @@ BOOL PawnIo_ReadSmn(PIORUNTIME* pRuntime, DWORD offset, DWORD* pValue)
 	return TRUE;
 }
 
+static int PawnIo_GetIntelTempFromMsr(PIORUNTIME* pRuntime, DWORD statusMsr)
+{
+	DWORD eax = 0, edx = 0, eax1a2 = 0, edx1a2 = 0;
+	int Tjunction = 100;
+
+	if (PawnIo_ReadMsr(pRuntime, 0x1A2, &eax1a2, &edx1a2))
+	{
+		int tjMax = (eax1a2 >> 16) & 0xFF;
+		if (tjMax > 0 && tjMax <= 150)
+			Tjunction = tjMax;
+	}
+
+	if (PawnIo_ReadMsr(pRuntime, statusMsr, &eax, &edx) && (eax & 0x80000000))
+	{
+		int deltaT = (eax & 0x007F0000) >> 16;
+		int tccOffset = (eax1a2 >> 24) & 0x3F;
+		int temp = Tjunction - deltaT - tccOffset * 2;
+		if (temp > 0 && temp < 130)
+			return temp;
+	}
+
+	return 0;
+}
+
 int PawnIo_GetCpuTemp(PIORUNTIME* pRuntime, DWORD Core)
 {
 	DWORD eax, edx, eax1a2, edx1a2;
 	int Tjunction, tjMax, deltaT;
+	DWORD_PTR oldAffinity = 0;
 #ifdef _DEBUG
 	WCHAR dbg[128];
 #endif
@@ -233,7 +258,8 @@ int PawnIo_GetCpuTemp(PIORUNTIME* pRuntime, DWORD Core)
 	if (!pRuntime || !pRuntime->bLoaded)
 		return 0;
 
-	SetThreadAffinityMask(GetCurrentThread(), Core);
+	if (Core)
+		oldAffinity = SetThreadAffinityMask(GetCurrentThread(), Core);
 
 	if (pRuntime->bIntel)
 	{
@@ -275,6 +301,8 @@ int PawnIo_GetCpuTemp(PIORUNTIME* pRuntime, DWORD Core)
 					Core, eax1a2, Tjunction, tccOffset, eax, deltaT, rawTemp);
 				OutputDebugStringW(dbg);
 #endif
+				if (oldAffinity)
+					SetThreadAffinityMask(GetCurrentThread(), oldAffinity);
 				return rawTemp;
 			}
 #ifdef _DEBUG
@@ -311,7 +339,7 @@ int PawnIo_GetCpuTemp(PIORUNTIME* pRuntime, DWORD Core)
 			if (PawnIo_ReadSmn(pRuntime, 0x00059800, &smnValue))
 			{
 				// bits 31:21: 娓╁害鍊?(1/128 掳C)
-				temp = (int)((smnValue >> 21) & 0x7F);
+				temp = (int)(((smnValue >> 21) * 125) / 1000);
 
 				// 妫€鏌ユ槸鍚﹂渶瑕?-49 鍋忕Щ (鏌愪簺 Ryzen 鏃у瀷鍙?
 				// RANGE_SEL (bit 19) 鎴?TJ_SEL (bits 17:16 閮戒负1)
@@ -320,7 +348,11 @@ int PawnIo_GetCpuTemp(PIORUNTIME* pRuntime, DWORD Core)
 				if (tempOffsetFlag)
 					temp -= 49;
 
-				return temp;
+				if (oldAffinity)
+					SetThreadAffinityMask(GetCurrentThread(), oldAffinity);
+				if (temp > 0 && temp < 130)
+					return temp;
+				return 0;
 			}
 		}
 		else if (family > 0x0F)
@@ -331,13 +363,23 @@ int PawnIo_GetCpuTemp(PIORUNTIME* pRuntime, DWORD Core)
 			if (PawnIo_Execute(pRuntime->hDevice, "ioctl_read_miscctl", input2, 2, output2, 1))
 			{
 				DWORD miscReg = (DWORD)(output2[0] & 0xFFFFFFFF);
-				return (int)(miscReg >> 21);
+				if (oldAffinity)
+					SetThreadAffinityMask(GetCurrentThread(), oldAffinity);
+				temp = (int)(miscReg >> 21);
+				if (temp > 0 && temp < 130)
+					return temp;
+				return 0;
 			}
 			// 澶囬€? MSR 0xE8
 			eax = edx = 0;
 			if (PawnIo_ReadMsr(pRuntime, 0x000000E8, &eax, &edx))
 			{
-				return (int)((eax >> 21) & 0x7F);
+				if (oldAffinity)
+					SetThreadAffinityMask(GetCurrentThread(), oldAffinity);
+				temp = (int)((eax >> 21) & 0x7F);
+				if (temp > 0 && temp < 130)
+					return temp;
+				return 0;
 			}
 		}
 		else
@@ -348,11 +390,32 @@ int PawnIo_GetCpuTemp(PIORUNTIME* pRuntime, DWORD Core)
 			if (PawnIo_Execute(pRuntime->hDevice, "ioctl_get_thermtrip", input2, 2, output2, 1))
 			{
 				DWORD miscReg = (DWORD)(output2[0] & 0xFFFFFFFF);
-				return (int)((miscReg >> 16) & 0x7F) - 49;
+				if (oldAffinity)
+					SetThreadAffinityMask(GetCurrentThread(), oldAffinity);
+				temp = (int)((miscReg >> 16) & 0x7F) - 49;
+				if (temp > 0 && temp < 130)
+					return temp;
+				return 0;
 			}
 		}
 	}
 
+	if (oldAffinity)
+		SetThreadAffinityMask(GetCurrentThread(), oldAffinity);
 	return 0;
 }
 
+int PawnIo_GetCpuPackageTemp(PIORUNTIME* pRuntime)
+{
+	if (!pRuntime || !pRuntime->bLoaded)
+		return 0;
+
+	if (pRuntime->bIntel)
+	{
+		int packageTemp = PawnIo_GetIntelTempFromMsr(pRuntime, 0x1B1);
+		if (packageTemp > 0)
+			return packageTemp;
+	}
+
+	return PawnIo_GetCpuTemp(pRuntime, 1);
+}
